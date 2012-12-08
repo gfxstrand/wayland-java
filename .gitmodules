@@ -1,0 +1,3 @@
+[submodule "jni/wayland"]
+	path = jni/wayland
+	url = git://anongit.freedesktop.org/wayland/wayland
