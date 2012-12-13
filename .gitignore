@@ -3,4 +3,8 @@ local.properties
 bin/
 gen/
 obj/
+src/org/freedesktop/wayland/server/protocol
+jni/src/server/protocol.c
+scanner/classes
+scanner/WaylandProtocolScanner.jar
 

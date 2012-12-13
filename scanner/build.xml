@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="WaylandProtocolScanner" default="jar">
+    <property name="src.dir" value="src"/>
+    <property name="classes.dir" value="classes"/>
+
+    <target name="clean">
+        <delete dir="${classes.dir}" failonerror="false" />
+        <delete file="${ant.project.name}.jar" />
+    </target>
+
+    <target name="compile" description="Compiles the protocol scanner">
+        <mkdir dir="${classes.dir}" />
+        <javac srcdir="${src.dir}" destdir="${classes.dir}"
+                includeantruntime="true" />
+    </target>
+
+    <target name="jar" description="Package the scanner" depends="compile">
+        <jar destfile="${ant.project.name}.jar" basedir="${classes.dir}"/>
+    </target>
+</project>
+

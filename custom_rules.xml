@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="wayland-java-custom" default="help">
+    <target name="-pre-build">
+        <ant dir="scanner" />
+        <taskdef name="scan-protocols" classname="Scanner"
+                classpath="scanner/WaylandProtocolScanner.jar" />
+        <scan-protocols src="jni/external/wayland/protocol/wayland.xml"
+                dest="src" type="java" component="server"
+                javapackage="org.freedesktop.wayland.server.protocol" />
+        <scan-protocols src="jni/external/wayland/protocol/wayland.xml"
+                dest="jni/src/server/protocol.c" type="c" component="server"
+                javapackage="org.freedesktop.wayland.server.protocol" />
+        <exec executable="ndk-build" failonerror="true"/>
+    </target>
+</project>
+
