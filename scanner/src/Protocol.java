@@ -93,6 +93,8 @@ public class Protocol
             writer.write("\n");
             writer.write("#include <stdlib.h>\n");
             writer.write("#include \"server-jni.h\"\n");
+            writer.write("#include \"wayland-server.h\"\n\n");
+            writer.write("typedef void (* __void_function)(void);\n");
 
             for (Interface iFace : interfaces)
                 iFace.writeServerC(writer);
@@ -101,7 +103,6 @@ public class Protocol
         } catch (IOException e) {
             throw new BuildException(e.getMessage());
         }
-
     }
 }
 

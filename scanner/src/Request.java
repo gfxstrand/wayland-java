@@ -52,17 +52,22 @@ class Request
         writer.write(");\n");
     }
 
+    public String getCServerWrapperName()
+    {
+        String pkg = iface.scanner.getJavaPackage();
+        if (pkg == null)
+            pkg = "";
+        else
+            pkg = pkg.replace(".", "_") + "_";
+        return pkg + iface.name + "_" + name;
+    }
+
     public void writeCServerWrapper(Writer writer)
             throws IOException
     {
         writer.write("static void\n");
 
-        String pkg = iface.scanner.getJavaPackage();
-        if (pkg != null)
-            writer.write(pkg.replace(".", "_") + "_");
-
-        writer.write(iface.name);
-        writer.write("_" + name + "(");
+        writer.write(getCServerWrapperName() + "(");
         writer.write("\n\t\tstruct wl_client * __client");
         writer.write(",\n\t\tstruct wl_resource * __resource");
         for (Argument arg : args) {

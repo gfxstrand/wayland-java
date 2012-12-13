@@ -14,6 +14,7 @@ class Interface
     public Protocol protocol;
     public Scanner scanner;
     public String name;
+    public String wl_name;
     private Description description;
     private ArrayList<Enum> enums;
     private ArrayList<Request> requests;
@@ -41,7 +42,8 @@ class Interface
         requests = new ArrayList<Request>();
         events = new ArrayList<Event>();
 
-        name = toClassName(xmlElem.getAttribute("name"));
+        wl_name = xmlElem.getAttribute("name");
+        name = toClassName(wl_name);
 
         int eventID = 0;
         int requestID = 0;
@@ -81,6 +83,12 @@ class Interface
         writer.write("public abstract class " + name);
         writer.write(" extends " + SERVER_BASE_CLASS_NAME + " \n{");
 
+        writer.write("\tprivate native void setWLInterfaces();\n");
+        writer.write("\tprotected " + name + "()\n");
+        writer.write("\t{\n");
+        writer.write("\t\tsetWLInterfaces();\n");
+        writer.write("\t}\n");
+
         for (Enum enm : enums) {
             writer.write("\n");
             enm.writeJavaDeclaration(writer);
@@ -105,6 +113,30 @@ class Interface
             writer.write("\n");
             request.writeCServerWrapper(writer);
         }
+
+        writer.write("\nstatic const __void_function ");
+        writer.write(name + "_wl_implementation[] = {\n");
+        for (Request request : requests) {
+            writer.write("\t(__void_function)&");
+            writer.write(request.getCServerWrapperName() + ",\n");
+        }
+        writer.write("};\n");
+
+        writer.write("\nJNIEXPORT void JNICALL\n");
+        writer.write("Java");
+        String pkg = scanner.getJavaPackage();
+        if (pkg != null)
+            writer.write("_" + pkg.replace(".", "_"));
+        writer.write("_" + name + "_setWLInterfaces(");
+        writer.write("\n\t\tJNIEnv * __env, jobject __jobj)\n");
+        writer.write("{\n");
+        writer.write("\tstruct wl_resource * resource;\n");
+        writer.write("\tresource = wl_jni_resource_from_java(__env, __jobj);\n");
+        writer.write("\tresource->object.interface = ");
+        writer.write("&" + wl_name + "_interface;\n");
+        writer.write("\tresource->object.implementation = ");
+        writer.write(name + "_wl_implementation;\n");
+        writer.write("}\n");
 
         for (Event event : events) {
             writer.write("\n");
