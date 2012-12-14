@@ -69,5 +69,9 @@ public class EventLoop
         destroy();
         super.finalize();
     }
+
+    static {
+        System.loadLibrary("wayland-java-server");
+    }
 }
 

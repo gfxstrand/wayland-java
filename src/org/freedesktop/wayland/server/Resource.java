@@ -25,7 +25,7 @@ public class Resource
     private static native void initializeJNI();
 
     static {
-        System.loadLibrary("libwayland-java-server");
+        System.loadLibrary("wayland-java-server");
         initializeJNI();
     }
 }

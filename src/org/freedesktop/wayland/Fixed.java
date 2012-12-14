@@ -8,5 +8,9 @@ public class Fixed
     {
         this.data = raw;
     }
+
+    static {
+        System.loadLibrary("wayland-java-server");
+    }
 }
 
