@@ -3,18 +3,43 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <pthread.h>
+
 JavaVM * java_vm;
 
-struct wl_list ptr_jobject_list;
+/* Structure that stores a object reference pointer with instructions for the
+ * type of reference and how it is to be deleted */
+struct ptr_jobject_pair {
+    void * ptr;
+    jobject jobj;
+    char is_weak;
+    struct wl_list link;
+};
 
-int jni_object_cache_loaded;
-struct {
+/* A list of object reference pairs */
+static struct wl_list ptr_jobject_list;
+
+/**
+ * The following stores an object cache that is filled by
+ * wl_jni_ensure_object_cache. The cached objects are used for a variety of
+ * helper functions to avoid addition JNI lookup calls
+ */
+static int jni_object_cache_loaded;
+static struct {
     struct {
         struct {
             jclass class;
             jmethodID init_bytes_charset;
             jmethodID getBytes_charset;
         } String;
+
+        struct {
+            jclass class;
+        } OutOfMemoryError;
+
+        struct {
+            jclass class;
+        } NullPointerException;
     } lang;
 
     struct {
@@ -23,6 +48,12 @@ struct {
         } charset;
     } nio;
 } java;
+
+/**
+ * This mutex is used to lock both the object cache and the object reference
+ * pairs list
+ */
+static pthread_mutex_t object_cache_mutex;
 
 static int
 wl_jni_ensure_object_cache(JNIEnv * env)
@@ -34,52 +65,114 @@ wl_jni_ensure_object_cache(JNIEnv * env)
     if (jni_object_cache_loaded)
         return 0;
 
+    pthread_mutex_lock(&object_cache_mutex);
+
+    /* Don't load it twice */
+    if (jni_object_cache_loaded) {
+        pthread_mutex_unlock(&object_cache_mutex);
+        return 0;
+    }
+
     if ((*env)->EnsureLocalCapacity(env, 3) < 0)
-        return -1; /* Exception Thrown */
+        goto exception;
+
+    /* we have to be a little careful because OutOfMemoryError is required to
+     * throw an OutOfMemoryError */
+    cls = (*env)->FindClass(env, "java/lang/OutOfMemoryError");
+    if (cls == NULL) goto exception;
+    java.lang.OutOfMemoryError.class = (*env)->NewGlobalRef(env, cls);
+    if (java.lang.OutOfMemoryError.class == NULL) {
+        (*env)->ThrowNew(env, cls, NULL);
+        (*env)->DeleteLocalRef(env, cls);
+        goto exception;
+    }
+    (*env)->DeleteLocalRef(env, cls);
+    cls = NULL;
+
+    cls = (*env)->FindClass(env, "java/lang/NullPointerException");
+    if (cls == NULL) goto exception;
+    java.lang.NullPointerException.class = (*env)->NewGlobalRef(env, cls);
+    (*env)->DeleteLocalRef(env, cls);
+    if (java.lang.NullPointerException.class == NULL) {
+        wl_jni_throw_OutOfMemoryError(env, NULL);
+        goto exception;
+    }
+    cls = NULL;
 
     cls = (*env)->FindClass(env, "java/lang/String");
+    if (cls == NULL) goto exception; /* Exception Thrown */
     java.lang.String.class = (*env)->NewGlobalRef(env, cls);
-    if (java.lang.String.class == NULL) return -1; /* Exception Thrown */
     (*env)->DeleteLocalRef(env, cls);
+    if (java.lang.String.class == NULL) goto exception;
     cls = NULL;
 
     java.lang.String.init_bytes_charset = (*env)->GetMethodID(env,
             java.lang.String.class, "<init>",
             "([BLjava/nio/charset/Charset;)V");
-    if (java.lang.String.init_bytes_charset == NULL) return -1;
+    if (java.lang.String.init_bytes_charset == NULL) goto exception;
 
     java.lang.String.init_bytes_charset = (*env)->GetMethodID(env,
             java.lang.String.class, "getBytes",
             "(Ljava/nio/charset/Charset;)[B");
-    if (java.lang.String.getBytes_charset == NULL) return -1;
+    if (java.lang.String.getBytes_charset == NULL) goto exception;
 
     /* This code loades the UTF-8 charset using the
      * java.nio.charset.Charset.forName() method */
     cls = (*env)->FindClass(env, "java/nio/charset/Charset");
-    if (cls == NULL) return -1; /* Exception Thrown */
+    if (cls == NULL) goto exception;
     mid = (*env)->GetStaticMethodID(env, cls, "forName",
             "(Ljava/lang/String;)Ljava/nio/charset/Charset;");
-    if (mid == NULL) return -1; /* Exception Thrown */
+    if (mid == NULL) {
+        (*env)->DeleteLocalRef(env, cls);
+        goto exception;
+    }
     jobj1 = (*env)->NewStringUTF(env, "UTF-8");
-    if (jobj1 == NULL) return -1; /* Exception Thrown */
+    if (jobj1 == NULL) {
+        (*env)->DeleteLocalRef(env, cls);
+        goto exception;
+    }
     jobj2 = (*env)->CallStaticObjectMethod(env, cls, mid, jobj1);
-    if ((*env)->ExceptionCheck(env) == JNI_TRUE) return -1;
+    (*env)->DeleteLocalRef(env, cls);
+    (*env)->DeleteLocalRef(env, jobj1);
+    if ((*env)->ExceptionCheck(env) == JNI_TRUE)
+        goto exception;
     java.nio.charset.utf8 = (*env)->NewGlobalRef(env, jobj2);
-    if (java.nio.charset.utf8 == NULL) return -1; /* Exception Thrown */
-    (*env)->DeleteLocalRef(env, cls); cls = NULL;
-    (*env)->DeleteLocalRef(env, jobj1); jobj1 = NULL;
+    if (java.nio.charset.utf8 == NULL) {
+        wl_jni_throw_OutOfMemoryError(env, NULL);
+        goto exception;
+    }
     (*env)->DeleteLocalRef(env, jobj2); jobj2 = NULL;
 
     jni_object_cache_loaded = 1;
+
+    pthread_mutex_unlock(&object_cache_mutex);
+
     return 0;
+
+exception:
+    pthread_mutex_unlock(&object_cache_mutex);
+    return -1;
 }
 
-struct ptr_jobject_pair {
-    void * ptr;
-    jobject jobj;
-    char is_weak;
-    struct wl_list link;
-};
+void
+wl_jni_throw_OutOfMemoryError(JNIEnv * env, const char * message)
+{
+    if (java.lang.OutOfMemoryError.class == NULL) {
+        if (wl_jni_ensure_object_cache(env) < 0)
+            return;
+    }
+
+    (*env)->ThrowNew(env, java.lang.OutOfMemoryError.class, message);
+}
+
+void
+wl_jni_throw_NullPointerException(JNIEnv * env, const char * message)
+{
+    if (wl_jni_ensure_object_cache(env) < 0)
+        return;
+
+    (*env)->ThrowNew(env, java.lang.NullPointerException.class, message);
+}
 
 JNIEnv *
 wl_jni_get_env()
@@ -94,18 +187,37 @@ int
 wl_jni_register_reference(JNIEnv * env, void * native_ptr, jobject jobj)
 {
     struct ptr_jobject_pair * pair;
-    pair = malloc(sizeof(*pair));
-    if (! pair) // Memory Check
+    jobject local_ref;
+    
+    if ((*env)->EnsureLocalCapacity(env, 1) < 0)
         return -1;
+
+    local_ref = (*env)->NewLocalRef(env, jobj);
+    if (local_ref == NULL) {
+        wl_jni_throw_NullPointerException(env, NULL);
+    }
+
+    pair = malloc(sizeof(*pair));
+    if (! pair) { // Memory Check
+        wl_jni_throw_OutOfMemoryError(env, NULL);
+        (*env)->DeleteLocalRef(env, local_ref);
+        return -1;
+    }
 
     pair->ptr = native_ptr;
     pair->is_weak = 0;
-    pair->jobj = (*env)->NewGlobalRef(env, jobj);
+    pair->jobj = (*env)->NewGlobalRef(env, local_ref);
     if (! pair->jobj) {
+        wl_jni_throw_OutOfMemoryError(env, NULL);
+        (*env)->DeleteLocalRef(env, local_ref);
         free(pair);
         return -1;
     }
+
+    pthread_mutex_lock(&object_cache_mutex);
     wl_list_insert(&ptr_jobject_list, &pair->link);
+    pthread_mutex_unlock(&object_cache_mutex);
+
     return 0;
 }
 
@@ -114,17 +226,23 @@ wl_jni_register_weak_reference(JNIEnv * env, void * native_ptr, jobject jobj)
 {
     struct ptr_jobject_pair * pair;
     pair = malloc(sizeof(*pair));
-    if (! pair) // Memory Check
+    if (pair == NULL) {
+        wl_jni_throw_OutOfMemoryError(env, NULL);
         return -1;
+    }
 
     pair->ptr = native_ptr;
     pair->is_weak = 1;
     pair->jobj = (*env)->NewWeakGlobalRef(env, jobj);
-    if (! pair->jobj) {
+    if ((*env)->ExceptionCheck(env) == JNI_TRUE) {
         free(pair);
         return -1;
     }
+
+    pthread_mutex_lock(&object_cache_mutex);
     wl_list_insert(&ptr_jobject_list, &pair->link);
+    pthread_mutex_unlock(&object_cache_mutex);
+
     return 0;
 }
 
@@ -145,13 +263,17 @@ delete_reference(JNIEnv * env, struct ptr_jobject_pair * pair)
 void
 wl_jni_unregister_reference(JNIEnv * env, void * native_ptr)
 {
+    pthread_mutex_lock(&object_cache_mutex);
+
     struct ptr_jobject_pair * pair;
     wl_list_for_each(pair, &ptr_jobject_list, link) {
         if (pair->ptr == native_ptr) {
             delete_reference(env, pair);
-            return;
+            break;
         }
     }
+
+    pthread_mutex_unlock(&object_cache_mutex);
 }
 
 jobject
@@ -163,20 +285,28 @@ wl_jni_find_reference(JNIEnv * env, void * native_ptr)
     if ((*env)->EnsureLocalCapacity(env, 1) < 0)
         return NULL; /* Exception Thrown */
 
+    pthread_mutex_lock(&object_cache_mutex);
+
+    obj = NULL;
     wl_list_for_each(pair, &ptr_jobject_list, link) {
         if (pair->ptr == native_ptr) {
             obj = (*env)->NewLocalRef(env, pair->jobj);
 
-            // Clean up from deleted objects. there's no reason to leave them
-            // around. Honestly, this shouldn't happen most of the time but we
-            // should do it anyway just in case we have a leak.
+            /*
+             * Clean up from deleted objects. there's no reason to leave them
+             * around. Honestly, this shouldn't happen most of the time but we
+             * should do it anyway just in case we have a leak.
+             */
             if (obj == NULL)
                 delete_reference(env, pair);
 
-            return obj;
+            break;
         }
     }
-    return NULL;
+
+    pthread_mutex_unlock(&object_cache_mutex);
+
+    return obj;
 }
 
 jstring
@@ -189,15 +319,16 @@ wl_jni_string_from_utf8(JNIEnv * env, const char * str)
     if (str == NULL)
         return NULL;
 
+    /* Set this to null so that NULL is return when an exception is thrown */
+    java_str = NULL;
+
     if (wl_jni_ensure_object_cache(env) < 0)
-        return NULL;
+        return NULL; /* Exception Thrown */
 
     if ((*env)->EnsureLocalCapacity(env, 2) < 0)
         return NULL; /* Exception Thrown */
 
-    java_str = NULL;
     len = strlen(str);
-
     bytes = (*env)->NewByteArray(env, len);
     if (bytes == NULL) return NULL; /* Exception Thrown */
 
@@ -226,7 +357,7 @@ wl_jni_string_to_utf8(JNIEnv * env, jstring java_str)
         return NULL;
 
     if (wl_jni_ensure_object_cache(env) < 0)
-        return NULL;
+        return NULL; /* Exception Thrown */
 
     if ((*env)->EnsureLocalCapacity(env, 1) < 0)
         return NULL; /* Exception Thrown */
@@ -240,8 +371,7 @@ wl_jni_string_to_utf8(JNIEnv * env, jstring java_str)
     c_str = malloc(len + 1);
     if (c_str == NULL) {
         (*env)->DeleteLocalRef(env, bytes);
-        (*env)->ThrowNew(env,
-                (*env)->FindClass(env, "java/lang/OutOfMemoryError"), NULL);
+        wl_jni_throw_OutOfMemoryError(env, NULL);
         return NULL;
     }
 
@@ -257,27 +387,21 @@ wl_jni_string_to_utf8(JNIEnv * env, jstring java_str)
     return c_str;
 }
 
-void *
-wl_array_append(struct wl_array * array, void * data, size_t size)
-{
-    size_t old_size;
-    void * new_data;
-
-    old_size = array->size;
-    new_data = wl_array_add(array, size);
-
-    if (new_data != NULL)
-        memcpy(array->data + old_size, data, size);
-
-    return new_data;
-}
-
 JNIEXPORT jint
 JNI_OnLoad(JavaVM *vm, void *reserved)
 {
     java_vm = vm;
+
+    /* Mark the cache as not yet loaded */
     jni_object_cache_loaded = 0;
+    /* This way we can detect this one individually */
+    java.lang.OutOfMemoryError.class = NULL;
+
+    pthread_mutex_init(&object_cache_mutex, NULL);
+
+    /* Initialized the cached objects list */
     wl_list_init(&ptr_jobject_list);
+
     return JNI_VERSION_1_2;
 }
 
