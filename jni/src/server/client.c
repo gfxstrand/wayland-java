@@ -40,9 +40,34 @@ JNIEXPORT int JNICALL
 Java_org_freedesktop_wayland_server_Client_addResource(JNIEnv * env,
         jobject jclient, jobject jresource)
 {
-    struct wl_client * client = wl_jni_client_from_java(env, jclient);
-    struct wl_resource * resource = wl_jni_resource_from_java(env, jresource);
-    wl_client_add_resource(client, resource);
+    /* TODO: Handle the case of already attached resources */
+    struct wl_client * client;
+    struct wl_resource * resource;
+    jobject global_ref;
+    int id;
+
+    if (jresource == NULL) {
+        wl_jni_throw_NullPointerException(env, NULL);
+        return;
+    }
+
+    client = wl_jni_client_from_java(env, jclient);
+    resource = wl_jni_resource_from_java(env, jresource);
+    if (client == NULL || resource == NULL)
+        return; /* Exception Thrown */
+
+    /* We need to convert the weak global reference to a global reference for
+     * proper garbage collection. See also: resource.c */
+    global_ref = (*env)->NewGlobalRef(env, (jobject)resource->data);
+    if (global_ref == NULL) {
+        /* The only way this can happen is an out-of-memory error */
+        wl_jni_throw_OutOfMemoryError(env, NULL);
+        return;
+    }
+    (*env)->DeleteWeakGlobalRef(env, (jobject)resource->data);
+    resource->data = global_ref;
+
+    id = (int)wl_client_add_resource(client, resource);
 }
 
 JNIEXPORT jobject JNICALL

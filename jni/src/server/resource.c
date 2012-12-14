@@ -6,70 +6,127 @@
 
 #include "server-jni.h"
 
+/* NOTE ON RESOURCES AND GARBAGE COLLECTION:
+ *
+ * At all times the resources->data member will contain either a weak global or
+ * a global reference to the java resource object. This way the reference is
+ * always available from any thread. In order for garbage collection to work
+ * properly the exact type of reference is determined as follows:
+ *
+ * If the resource is unattached, i.e. the resource->client member is NULL then
+ * resources->data will hold a weak global reference.  This way it can be
+ * garbage collected
+ *
+ * If the resource is attached, i.e. the resource->client member is not NULL
+ * then resources->data will hold a global reference. In this way, it is
+ * considered to be "owned" by the client to which it is attached and will not
+ * be arbitrarily garbage-collected.
+ */
+
+struct {
+    jclass class;
+    jfieldID resource_ptr;
+    jmethodID destroy;
+} Resource;
+
 struct wl_resource *
 wl_jni_resource_from_java(JNIEnv * env, jobject jresource)
 {
-    // FIXME: This should use container_of and the object pointer
-    struct wl_resource * resource;
-    jclass cls = (*env)->GetObjectClass(env, jresource);
-    jfieldID fid = (*env)->GetFieldID(env, cls, "object_ptr", "J");
-    resource = (struct wl_resource *)(*env)->GetLongField(env, jresource, fid);
-    (*env)->DeleteLocalRef(env, cls);
-    return resource;
+    return (struct wl_resource *)(*env)->GetLongField(env, jresource,
+            Resource.resource_ptr);
 }
 
 jobject
 wl_jni_resource_to_java(JNIEnv * env, struct wl_resource * resource)
 {
-    return (jobject)resource->data;
+    return (*env)->NewLocalRef(env, (jobject)resource->data);
 }
 
 static void
 resource_destroy(struct wl_resource * resource)
 {
+    if (resource == NULL)
+        return;
+
+    /* This will ensure that we don't get a recursive call */
+    resource->destroy = NULL;
+
     JNIEnv * env = wl_jni_get_env();
 
     jobject jresource = wl_jni_resource_to_java(env, resource);
+    if (jresource == NULL)
+        return;
 
-    jclass cls = (*env)->GetObjectClass(env, jresource);
-    jmethodID mid = (*env)->GetMethodID(env, cls, "destroy", "()V");
-    (*env)->CallVoidMethod(env, jresource, mid);
+    (*env)->CallVoidMethod(env, jresource, Resource.destroy, NULL);
+    (*env)->DeleteLocalRef(env, jresource);
+
+    // TODO: Handle Exceptions
 }
 
 JNIEXPORT void JNICALL
-Java_org_freedesktop_wayland_server_Resource_create(JNIEnv * env,
+Java_org_freedesktop_wayland_server_Resource__1create(JNIEnv * env,
         jobject jresource, int id)
 {
-    struct wl_resource * resource = malloc(sizeof(struct wl_resource));
+    struct wl_resource * resource;
+    jobject global_ref;
+
+    global_ref = (*env)->NewWeakGlobalRef(env, jresource);
+    if (global_ref == NULL) {
+        wl_jni_throw_OutOfMemoryError(env, NULL);
+        return;
+    }
+
+    resource = malloc(sizeof(struct wl_resource));
+    if (resource == NULL) {
+        wl_jni_throw_OutOfMemoryError(env, NULL);
+        (*env)->DeleteWeakGlobalRef(env, global_ref);
+        return;
+    }
+
     memset(resource, 0, sizeof(struct wl_resource));
 
     resource->object.id = id;
 
     resource->destroy = resource_destroy;
-    resource->data = jresource;
+    resource->data = global_ref;
     wl_signal_init(&resource->destroy_signal);
 
-    jclass cls = (*env)->GetObjectClass(env, jresource);
-    jfieldID fid = (*env)->GetFieldID(env, cls, "object_ptr", "J");
-    (*env)->SetLongField(env, jresource, fid, (long)resource);
+    (*env)->SetLongField(env, jresource, Resource.resource_ptr, (long)resource);
+    if ((*env)->ExceptionCheck(env)) {
+        (*env)->DeleteWeakGlobalRef(env, global_ref);
+        free(resource);
+    }
 }
 
 JNIEXPORT void JNICALL
 Java_org_freedesktop_wayland_server_Resource_destroy(JNIEnv * env,
-        jobject jresource)
+        jobject jresource, jobject jclient)
 {
     struct wl_resource * resource = wl_jni_resource_from_java(env, jresource);
 
     if (resource) {
-        // Set this to 0 to prevent recursive calls
-        resource->destroy = 0;
-        wl_resource_destroy(resource);
+        /*
+         * We will only run the destroy if resource->destroy is not null. This
+         * prevents recursive calls. If wl_resouce_destroy() gets called
+         * directly on this resource, it will call resource_destroy() which will
+         * cause the destroy even to propogate through the chain and we will
+         * end up here. For this reason, resource_destroy() sets the destroy
+         * pointer to null so that we can detect that casae and not call
+         * wl_resource_destroy() twice. If, however, the destroy event
+         * originates from a request, this pointer will still be non-null.
+         */
+        if (resource->destroy != NULL)
+            wl_resource_destroy(resource);
+
+        if (resource->client == NULL) {
+            (*env)->DeleteWeakGlobalRef(env, (jobject)resource->data);
+        } else {
+            (*env)->DeleteGlobalRef(env, (jobject)resource->data);
+        }
 
         free(resource);
 
-        jclass cls = (*env)->GetObjectClass(env, jresource);
-        jfieldID fid = (*env)->GetFieldID(env, cls, "object_ptr", "J");
-        (*env)->SetLongField(env, jresource, fid, 0);
+        (*env)->SetLongField(env, jresource, Resource.resource_ptr, 0);
     }
 }
 
@@ -118,8 +175,7 @@ wl_jni_resource_call_request(struct wl_client * client,
 
     jvalue * args = malloc(nargs * sizeof(jvalue));
     if (args == NULL) {
-        (*env)->ThrowNew(env,
-                (*env)->FindClass(env, "java/lang/OutOfMemoryError"), NULL);
+        wl_jni_throw_OutOfMemoryError(env, NULL);
         goto early_exception; /* Exception Thrown */
     }
 
@@ -195,15 +251,20 @@ wl_jni_resource_call_request(struct wl_client * client,
         goto free_arguments;
 
     cls = (*env)->GetObjectClass(env, jresource);
-    if (cls == NULL)
+    if (cls == NULL) {
+        (*env)->DeleteLocalRef(env, jresource);
         goto free_arguments;
+    }
 
     mid = (*env)->GetMethodID(env, cls, method_name, java_prototype);
     (*env)->DeleteLocalRef(env, cls);
-    if (mid == NULL)
+    if (mid == NULL) {
+        (*env)->DeleteLocalRef(env, jresource);
         goto free_arguments;
+    }
 
     (*env)->CallVoidMethodA(env, resource, mid, args);
+    (*env)->DeleteLocalRef(env, jresource);
 
 free_arguments:
     for (; arg >= 0; --arg) {
@@ -221,5 +282,25 @@ free_arguments:
 early_exception:
     /* Handle Exceptions here */
     return;
+}
+
+JNIEXPORT void JNICALL
+Java_org_freedesktop_wayland_server_Resource_initializeJNI(JNIEnv * env,
+        jclass cls)
+{
+    Resource.class = (*env)->NewGlobalRef(env, cls);
+    if ((*env)->ExceptionCheck(env) == JNI_TRUE) {
+        wl_jni_throw_OutOfMemoryError(env, NULL);
+        return;
+    }
+
+    Resource.resource_ptr = (*env)->GetFieldID(env, cls, "resource_ptr", "J");
+    if (Resource.resource_ptr == NULL)
+        return; /* Exception Thrown */
+
+    Resource.destroy = (*env)->GetMethodID(env, cls, "destroy",
+            "(Lorg/freedesktop/wayland/server/Client;)V");
+    if (Resource.destroy == NULL)
+        return; /* Exception Thrown */
 }
 
