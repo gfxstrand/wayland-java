@@ -9,6 +9,7 @@
 struct wl_resource *
 wl_jni_resource_from_java(JNIEnv * env, jobject jresource)
 {
+    // FIXME: This should use container_of and the object pointer
     struct wl_resource * resource;
     jclass cls = (*env)->GetObjectClass(env, jresource);
     jfieldID fid = (*env)->GetFieldID(env, cls, "object_ptr", "J");
@@ -37,10 +38,12 @@ resource_destroy(struct wl_resource * resource)
 
 JNIEXPORT void JNICALL
 Java_org_freedesktop_wayland_server_Resource_create(JNIEnv * env,
-        jobject jresource)
+        jobject jresource, int id)
 {
     struct wl_resource * resource = malloc(sizeof(struct wl_resource));
     memset(resource, 0, sizeof(struct wl_resource));
+
+    resource->object.id = id;
 
     resource->destroy = resource_destroy;
     resource->data = jresource;

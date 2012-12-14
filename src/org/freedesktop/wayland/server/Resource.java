@@ -4,13 +4,13 @@ import org.freedesktop.wayland.Object;
 
 public class Resource extends Object
 {
-    protected Resource()
+    protected Resource(int id)
     {
         super(0);
-        create();
+        create(id);
     }
 
-    private final native void create();
+    private final native void create(int id);
     public native void destroy();
 
     @Override

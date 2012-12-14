@@ -8,5 +8,8 @@ public class Object
     {
         this.object_ptr = object_ptr;
     }
+
+    protected native void setID(int id);
+    public native int getID();
 }
 

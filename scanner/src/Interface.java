@@ -81,11 +81,13 @@ class Interface
         if (description != null)
             description.writeJavaDoc(writer, "");
         writer.write("public abstract class " + name);
-        writer.write(" extends " + SERVER_BASE_CLASS_NAME + " \n{");
+        writer.write(" extends " + SERVER_BASE_CLASS_NAME + "\n");
+        writer.write("{\n");
 
         writer.write("\tprivate native void setWLInterfaces();\n");
-        writer.write("\tprotected " + name + "()\n");
+        writer.write("\tprotected " + name + "(int id)\n");
         writer.write("\t{\n");
+        writer.write("\t\tsuper(id);\n");
         writer.write("\t\tsetWLInterfaces();\n");
         writer.write("\t}\n");
 

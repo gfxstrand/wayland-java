@@ -7,6 +7,8 @@
 wl_fixed_t wl_jni_fixed_from_java(JNIEnv * env, jobject jobj);
 jobject wl_jni_fixed_to_java(JNIEnv * env, wl_fixed_t fixed);
 
+struct wl_object * wl_jni_object_from_java(JNIEnv * env, jobject jobj);
+
 extern JavaVM * java_vm;
 
 JNIEnv * wl_jni_get_env();
