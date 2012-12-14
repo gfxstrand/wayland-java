@@ -21,26 +21,6 @@ class Enum
             name = xmlElem.getAttribute("name").toUpperCase();
             summary = xmlElem.getAttribute("summary");
             value = xmlElem.getAttribute("value");
-            /*
-            try {
-                String valueStr = xmlElem.getAttribute("value");
-                if (valueStr.startsWith("0x")) {
-                    value = Integer.parseInt(valueStr.substring(2), 16);
-                } else {
-                    value = Integer.parseInt(xmlElem.getAttribute("value"));
-                }
-            } catch (NumberFormatException e) {
-                throw new BuildException("Invalid enumeration value: \"" +
-                        xmlElem.getAttribute("value") + "\"");
-            }
-            */
-        }
-
-        public void writeEntry(Writer writer, String tab) throws IOException
-        {
-            if (summary != null && ! summary.isEmpty())
-                writer.write(tab + "/** " + summary + " */\n");
-            writer.write(tab + "ENUM_" + name + " (" + value + ")");
         }
     }
 
@@ -73,6 +53,15 @@ class Enum
         if (description != null)
             description.writeJavaDoc(writer, "\t");
 
+        for (Entry entry : entries) {
+            if (! entry.summary.isEmpty())
+                writer.write("\t/** " + entry.summary + " */\n");
+            writer.write("\tpublic final int " + name.toUpperCase() + "_");
+            writer.write(entry.name.toUpperCase());
+            writer.write(" = " + entry.value + ";\n");
+        }
+
+        /*
         writer.write("\tenum " + name + " {\n");
         if (! entries.isEmpty())
             entries.get(0).writeEntry(writer, "\t\t");
@@ -87,6 +76,7 @@ class Enum
         writer.write("\t\t\tthis.value = value;\n");
         writer.write("\t\t}\n");
         writer.write("\t}\n");
+        */
     }
 }
 
