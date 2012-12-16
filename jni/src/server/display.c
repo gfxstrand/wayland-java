@@ -79,6 +79,42 @@ Java_org_freedesktop_wayland_server_Display_flushClients(JNIEnv * env,
     wl_display_flush_clients(wl_jni_display_from_java(env, jdisplay));
 }
 
+static void
+global_bind_func(struct wl_client * client, void * data, uint32_t version,
+        uint32_t id)
+{
+    // TODO
+}
+
+JNIEXPORT jobject JNICALL
+Java_org_freedesktop_wayland_server_Display_addGlobal(JNIEnv * env,
+        jobject jdisplay, jobject jresource)
+{
+    if (jresource == NULL) {
+        wl_jni_throw_NullPointerException(env, NULL);
+        return;
+    }
+
+    jclass cls = (*env)->FindClass(env,
+            "org/freedesktop/wayland/server/Display$Global");
+    if (cls == NULL)
+        return NULL; /* Exception Thrown */
+
+    jmethodID mid = (*env)->GetMethodID(env, cls, "<init>", "(J)V");
+    if (mid == NULL)
+        return NULL; /* Exception Thrown */
+
+    struct wl_resource * resource = wl_jni_resource_from_java(env, jresource);
+    if (resource == NULL)
+        return NULL; /* Exception Thrown */
+
+    struct wl_display * display = wl_jni_display_from_java(env, jdisplay);
+    struct wl_global * global = wl_display_add_global(display,
+            resource->object.interface, resource, &global_bind_func);
+
+    return (*env)->NewObject(env, cls, mid, global);
+}
+
 JNIEXPORT int JNICALL
 Java_org_freedesktop_wayland_server_Display_getSerial(JNIEnv * env,
         jobject jdisplay)

@@ -4,7 +4,7 @@ import java.io.File;
 
 public class Display
 {
-    public class Global
+    public static class Global
     {
         private long global_ptr;
 
@@ -27,7 +27,7 @@ public class Display
     public native void run();
     public native void flushClients();
     public native Global addGlobal(Resource resource);
-    public native void removeGlobal(Global global);
+    // public native void removeGlobal(Global global);
     public native int getSerial();
     public native int nextSerial();
 
