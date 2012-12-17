@@ -30,6 +30,7 @@ static struct {
         struct {
             jclass class;
             jmethodID init_bytes_charset;
+            jmethodID getBytes;
             jmethodID getBytes_charset;
         } String;
 
@@ -111,7 +112,10 @@ wl_jni_ensure_object_cache(JNIEnv * env)
             "([BLjava/nio/charset/Charset;)V");
     if (java.lang.String.init_bytes_charset == NULL) goto exception;
 
-    java.lang.String.init_bytes_charset = (*env)->GetMethodID(env,
+    java.lang.String.getBytes = (*env)->GetMethodID(env,
+            java.lang.String.class, "getBytes", "()[B");
+    if (java.lang.String.getBytes == NULL) goto exception;
+    java.lang.String.getBytes_charset = (*env)->GetMethodID(env,
             java.lang.String.class, "getBytes",
             "(Ljava/nio/charset/Charset;)[B");
     if (java.lang.String.getBytes_charset == NULL) goto exception;
@@ -364,6 +368,47 @@ wl_jni_string_to_utf8(JNIEnv * env, jstring java_str)
 
     bytes = (*env)->CallObjectMethod(env, java_str,
             java.lang.String.getBytes_charset, java.nio.charset.utf8);
+    if ((*env)->ExceptionCheck(env) == JNI_TRUE)
+        return NULL; /* Exception Thrown */
+
+    len = (*env)->GetArrayLength(env, bytes);
+    c_str = malloc(len + 1);
+    if (c_str == NULL) {
+        (*env)->DeleteLocalRef(env, bytes);
+        wl_jni_throw_OutOfMemoryError(env, NULL);
+        return NULL;
+    }
+
+    (*env)->GetByteArrayRegion(env, bytes, 0, len, c_str);
+    if ((*env)->ExceptionCheck(env) == JNI_TRUE) {
+        (*env)->DeleteLocalRef(env, bytes);
+        free(c_str);
+        return NULL;
+    }
+
+    (*env)->DeleteLocalRef(env, bytes);
+    c_str[len] = '\0';
+    return c_str;
+}
+
+char *
+wl_jni_string_to_default(JNIEnv * env, jstring java_str)
+{
+    int len;
+    char * c_str;
+    jarray bytes;
+
+    if ((*env)->IsSameObject(env, java_str, NULL) == JNI_TRUE)
+        return NULL;
+
+    if (wl_jni_ensure_object_cache(env) < 0)
+        return NULL; /* Exception Thrown */
+
+    if ((*env)->EnsureLocalCapacity(env, 1) < 0)
+        return NULL; /* Exception Thrown */
+
+    bytes = (*env)->CallObjectMethod(env, java_str,
+            java.lang.String.getBytes);
     if ((*env)->ExceptionCheck(env) == JNI_TRUE)
         return NULL; /* Exception Thrown */
 

@@ -1,5 +1,7 @@
 package org.freedesktop.wayland.server;
 
+import java.io.File;
+
 public class Client
 {
     private long client_ptr;
@@ -8,6 +10,9 @@ public class Client
     {
         create(display, fd);
     }
+
+    public static native Client startClient(Display display, File executable,
+            String[] args);
 
     private native void create(Display display, int fd);
     public native void flush();

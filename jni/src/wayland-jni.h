@@ -23,5 +23,7 @@ jobject wl_jni_find_reference(JNIEnv * env, void * native_ptr);
 jstring wl_jni_string_from_utf8(JNIEnv * env, const char * str);
 char * wl_jni_string_to_utf8(JNIEnv * env, jstring java_str);
 
+char * wl_jni_string_to_default(JNIEnv * env, jstring java_str);
+
 #endif /* ! defined __WAYLAND_JAVA_WAYLAND_JNI_H__ */
 

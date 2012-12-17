@@ -1,3 +1,9 @@
+#include <unistd.h>
+#include <fcntl.h>
+#include <stdio.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+
 #include <wayland-server.h>
 
 #include "server/server-jni.h"
@@ -14,6 +20,113 @@ jobject
 wl_jni_client_to_java(JNIEnv * env, struct wl_client * client)
 {
     return wl_jni_find_reference(env, client);
+}
+
+JNIEXPORT jobject JNICALL
+Java_org_freedesktop_wayland_server_Client_startClient(JNIEnv * env,
+        jclass Client, jobject jdisplay, jobject jfile, jarray jargs)
+{
+    jclass cls;
+    jmethodID mid;
+    jstring jexec_path, jarg;
+    jobject jclient;
+    int nargs, arg;
+    char * exec_path;
+    char fd_str[16];
+    char ** args;
+    pid_t pid;
+    int sockets[2];
+    int flags;
+
+    jclient = NULL;
+    
+    /* Get the string for the executable path */
+    cls = (*env)->GetObjectClass(env, jfile);
+    if (cls == NULL) return NULL; /* Exception Thrown */
+    mid = (*env)->GetMethodID(env, cls, "getPath", "()Ljava/lang/String;");
+    if (mid == NULL) return NULL; /* Exception Thrown */
+    jexec_path = (*env)->CallObjectMethod(env, jfile, mid);
+    if ((*env)->ExceptionCheck(env) == JNI_TRUE) return NULL;
+    exec_path = wl_jni_string_to_default(env, jexec_path);
+    if ((*env)->ExceptionCheck(env) == JNI_TRUE) return NULL;
+
+    (*env)->DeleteLocalRef(env, cls);
+    (*env)->DeleteLocalRef(env, jexec_path);
+
+    nargs = (*env)->GetArrayLength(env, jargs);
+    args = malloc((nargs + 1) * sizeof(char *));
+    if (args == NULL) {
+        free(exec_path);
+        wl_jni_throw_OutOfMemoryError(env, NULL);
+        return NULL;
+    }
+
+    args[nargs] = NULL;
+    for (arg = 0; arg < nargs; ++arg) {
+        jarg = (*env)->GetObjectArrayElement(env, jargs, arg);
+        if ((*env)->ExceptionCheck(env) == JNI_TRUE) {
+            --arg;
+            goto cleanup_arguments;
+        }
+
+        args[arg] = wl_jni_string_to_utf8(env, jarg);
+        if ((*env)->ExceptionCheck(env) == JNI_TRUE) {
+            goto cleanup_arguments;
+        }
+        (*env)->DeleteLocalRef(env, jarg);
+    }
+
+    if (socketpair(AF_UNIX, SOCK_STREAM, 0, sockets)) {
+        (*env)->ThrowNew(env,
+            (*env)->FindClass(env, "java/lang/io/IOException"),
+            "socketpair failed");
+        goto cleanup_arguments;
+    }
+
+    pid = fork();
+    if (pid == -1) {
+        (*env)->ThrowNew(env,
+                (*env)->FindClass(env, "java/lang/io/IOException"),
+                "Fork Failed");
+    } else if (pid == 0) {
+        // We are the child
+        
+        // Close the parent socket
+        close(sockets[0]);
+
+        snprintf(fd_str, 16, "%d", sockets[1]);
+        setenv("WAYLAND_SOCKET", fd_str, 1);
+        setenv("XDG_RUNTIME_DIR", "/data/data/net.jlekstrand.wayland/", 1);
+
+        execv(exec_path, args);
+        // This is bad
+        exit(-1);
+    } else {
+        close(sockets[1]);
+        flags = fcntl(sockets[0], F_GETFD);
+        flags |= FD_CLOEXEC;
+        if (fcntl(sockets[0], F_SETFD, flags) == -1) {
+            (*env)->ThrowNew(env,
+                (*env)->FindClass(env, "java/lang/io/IOException"),
+                "fnctl failed");
+            goto cleanup_arguments;
+        }
+
+        cls = (*env)->FindClass(env, "org/freedesktop/wayland/server/Client");
+        if (cls == NULL) goto cleanup_arguments;
+        mid = (*env)->GetMethodID(env, cls, "<init>",
+                "(Lorg/freedesktop/wayland/server/Display;I)V");
+        if (mid == NULL) goto cleanup_arguments;
+        jclient = (*env)->NewObject(env, cls, mid, jdisplay, sockets[0]);
+    }
+
+cleanup_arguments:
+    for (; arg >= 0; --arg)
+        free(args[arg]);
+    free(args);
+    free(exec_path);
+
+    return jclient;
 }
 
 JNIEXPORT void JNICALL
