@@ -18,19 +18,21 @@ class Enum
 
         private Entry(Element xmlElem)
         {
-            name = xmlElem.getAttribute("name").toUpperCase();
+            name = xmlElem.getAttribute("name");
             summary = xmlElem.getAttribute("summary");
             value = xmlElem.getAttribute("value");
         }
     }
 
+    private Interface iFace;
     private String name;
     private Description description;
     private ArrayList<Entry> entries;
 
-    public Enum(Element xmlElem)
+    public Enum(Interface iFace, Element xmlElem)
     {
-        name = Scanner.toUpperCamelCase(xmlElem.getAttribute("name"));
+        this.iFace = iFace;
+        name = xmlElem.getAttribute("name");
         entries = new ArrayList<Entry>();
 
         for (Node node = xmlElem.getFirstChild(); node != null;
@@ -60,23 +62,26 @@ class Enum
             writer.write(entry.name.toUpperCase());
             writer.write(" = " + entry.value + ";\n");
         }
+        
+        if (name.toLowerCase().equals("error")) {
+            for (Entry entry : entries) {
+                String errorName = Scanner.toUpperCamelCase(entry.name)
+                        + "Error";
 
-        /*
-        writer.write("\tenum " + name + " {\n");
-        if (! entries.isEmpty())
-            entries.get(0).writeEntry(writer, "\t\t");
-        for (int i = 1; i < entries.size(); ++i) {
-            writer.write(",\n");
-            entries.get(i).writeEntry(writer, "\t\t");
+                writer.write("\n");
+                writer.write("\tprotected class " + errorName);
+                writer.write(" extends RequestError\n");
+                writer.write("\t{\n");
+                writer.write("\t\t" + errorName + "(String message)\n");
+                writer.write("\t\t{\n");
+                writer.write("\t\t\tsuper(message, ");
+                writer.write(iFace.getName() + ".this, ");
+                writer.write(name.toUpperCase() + "_");
+                writer.write(entry.name.toUpperCase() + ");\n");
+                writer.write("\t\t}\n");
+                writer.write("\t}\n");
+            }
         }
-        writer.write(";\n\n");
-        writer.write("\t\tpublic final int value;\n\n");
-        writer.write("\t\t" + name + "(int value)\n");
-        writer.write("\t\t{\n");
-        writer.write("\t\t\tthis.value = value;\n");
-        writer.write("\t\t}\n");
-        writer.write("\t}\n");
-        */
     }
 }
 

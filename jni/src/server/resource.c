@@ -29,6 +29,26 @@ struct {
     jmethodID destroy;
 } Resource;
 
+struct {
+    jclass class;
+    jfieldID errorCode;
+} RequestError;
+
+struct {
+    struct {
+        struct {
+            jclass class;
+            jmethodID getMessage;
+        } Throwable;
+        struct {
+            jclass class;
+        } OutOfMemoryError;
+        struct {
+            jclass class;
+        } NoSuchMethodError;
+    } lang;
+} java;
+
 struct wl_resource *
 wl_jni_resource_from_java(JNIEnv * env, jobject jresource)
 {
@@ -128,6 +148,90 @@ Java_org_freedesktop_wayland_server_Resource_destroy(JNIEnv * env,
 
         (*env)->SetLongField(env, jresource, Resource.resource_ptr, 0);
     }
+}
+
+static void
+handle_resource_errors(JNIEnv * env, struct wl_resource * resource)
+{
+    jthrowable exception, exception2;
+    jstring message;
+    char * c_msg;
+    int error_code;
+
+    exception = (*env)->ExceptionOccurred(env);
+
+    if (exception == NULL)
+        return;
+
+    c_msg = wl_jni_string_to_utf8(env, message);
+
+    if ((*env)->IsInstanceOf(env, exception,
+            java.lang.OutOfMemoryError.class)) {
+        goto out_of_memory;
+    }
+    
+    if ((*env)->IsInstanceOf(env, exception,
+            java.lang.NoSuchMethodError.class) ||
+        (*env)->IsInstanceOf(env, exception, RequestError.class))
+    {
+        (*env)->ExceptionClear(env);
+
+        message = (*env)->CallObjectMethod(env, exception,
+                java.lang.Throwable.getMessage);
+
+        exception2 = (*env)->ExceptionOccurred(env);
+        if (exception2 != NULL) {
+            if ((*env)->IsInstanceOf(env, exception,
+                    java.lang.OutOfMemoryError.class)) {
+                goto out_of_memory;
+            } else {
+                goto unhandled_exception;
+            }
+        }
+
+        c_msg = wl_jni_string_to_utf8(env, message);
+        exception2 = (*env)->ExceptionOccurred(env);
+        if (exception2 != NULL) {
+            if ((*env)->IsInstanceOf(env, exception,
+                    java.lang.OutOfMemoryError.class)) {
+                goto out_of_memory;
+            } else {
+                goto unhandled_exception;
+            }
+        }
+
+        if ((*env)->IsInstanceOf(env, exception,
+                java.lang.NoSuchMethodError.class)) {
+            wl_resource_post_error(resource, WL_DISPLAY_ERROR_INVALID_METHOD,
+                    "%s", c_msg);
+            free(c_msg);
+            (*env)->ExceptionClear(env);
+            return;
+        } else if ((*env)->IsInstanceOf(env, exception,
+                RequestError.class)) {
+            error_code = (*env)->GetIntField(env, exception,
+                    RequestError.errorCode);
+            wl_resource_post_error(resource, error_code, "%s", c_msg);
+            free(c_msg);
+            (*env)->ExceptionClear(env);
+            return;
+        } else {
+            free(c_msg);
+            goto unhandled_exception;
+        }
+    } else {
+        goto unhandled_exception;
+    }
+
+out_of_memory:
+    wl_resource_post_no_memory(resource);
+    (*env)->ExceptionClear(env);
+    return;
+
+unhandled_exception:
+    (*env)->ExceptionDescribe(env);
+    (*env)->ExceptionClear(env);
+    return;
 }
 
 void
@@ -281,6 +385,7 @@ free_arguments:
 
 early_exception:
     /* Handle Exceptions here */
+    handle_resource_errors(env, resource);
     return;
 }
 
@@ -301,6 +406,49 @@ Java_org_freedesktop_wayland_server_Resource_initializeJNI(JNIEnv * env,
     Resource.destroy = (*env)->GetMethodID(env, cls, "destroy",
             "(Lorg/freedesktop/wayland/server/Client;)V");
     if (Resource.destroy == NULL)
+        return; /* Exception Thrown */
+
+    cls = (*env)->FindClass(env,
+            "org/freedesktop/wayland/server/RequestError");
+    if (cls == NULL)
+        return; /* Exception Thrown */
+    RequestError.class = (*env)->NewGlobalRef(env, cls);
+    if (RequestError.class == NULL)
+        return; /* Exception Thrown */
+    (*env)->DeleteLocalRef(env, cls);
+
+    RequestError.errorCode = (*env)->GetFieldID(env, RequestError.class,
+            "errorCode", "I");
+    if (RequestError.errorCode == NULL)
+        return; /* Exception Thrown */
+
+    cls = (*env)->FindClass(env, "java/lang/OutOfMemoryError");
+    if (cls == NULL)
+        return; /* Exception Thrown */
+    java.lang.OutOfMemoryError.class = (*env)->NewGlobalRef(env, cls);
+    if (java.lang.OutOfMemoryError.class == NULL)
+        return; /* Exception Thrown */
+    (*env)->DeleteLocalRef(env, cls);
+
+    cls = (*env)->FindClass(env, "java/lang/NoSuchMethodError");
+    if (cls == NULL)
+        return; /* Exception Thrown */
+    java.lang.NoSuchMethodError.class = (*env)->NewGlobalRef(env, cls);
+    if (java.lang.NoSuchMethodError.class == NULL)
+        return; /* Exception Thrown */
+    (*env)->DeleteLocalRef(env, cls);
+
+    cls = (*env)->FindClass(env, "java/lang/Throwable");
+    if (cls == NULL)
+        return; /* Exception Thrown */
+    java.lang.Throwable.class = (*env)->NewGlobalRef(env, cls);
+    if (java.lang.Throwable.class == NULL)
+        return; /* Exception Thrown */
+    (*env)->DeleteLocalRef(env, cls);
+
+    java.lang.Throwable.getMessage = (*env)->GetMethodID(env,
+            java.lang.Throwable.class, "getMessage", "()Ljava/lang/String;");
+    if (java.lang.Throwable.getMessage == NULL)
         return; /* Exception Thrown */
 }
 

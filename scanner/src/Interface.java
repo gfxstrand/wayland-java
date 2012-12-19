@@ -57,7 +57,7 @@ class Interface
             if (tagName.equals("description")) {
                 description = new Description(child);
             } else if (tagName.equals("enum")) {
-                enums.add(new Enum(child));
+                enums.add(new Enum(this, child));
             } else if (tagName.equals("request")) {
                 requests.add(new Request(this, requestID++, child));
             } else if (tagName.equals("event")) {
@@ -76,6 +76,7 @@ class Interface
         writer.write("import org.freedesktop.wayland.Fixed;\n");
         writer.write("import org.freedesktop.wayland.server.Client;\n");
         writer.write("import org.freedesktop.wayland.server.Resource;\n");
+        writer.write("import org.freedesktop.wayland.server.RequestError;\n");
         writer.write("\n");
         
         if (description != null)
