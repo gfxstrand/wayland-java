@@ -99,5 +99,28 @@ class Request
         writer.write(");\n");
         writer.write("}\n");
     }
+
+    public void writeJavaWaylandMessageInfo(Writer writer)
+            throws IOException
+    {
+        writer.write("\t\t\tnew Interface.Message(\"" + name + "\", ");
+        writer.write("\"");
+        for (Argument arg : args) {
+            writer.write(arg.getWLPrototype());
+        }
+        writer.write("\", new Interface[]{\n");
+        for (Argument arg : args) {
+            if (arg.type == Argument.Type.OBJECT) {
+                writer.write("\t\t\t\t");
+                writer.write("org.freedesktop.wayland.server.protocol.");
+                writer.write(arg.ifaceName + ".WAYLAND_INTERFACE");
+                writer.write(",\n");
+            } else {
+                writer.write("\t\t\t\t");
+                writer.write("null,\n");
+            }
+        }
+        writer.write("\t\t\t}),\n");
+    }
 }
 

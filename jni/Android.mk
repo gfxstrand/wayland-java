@@ -5,6 +5,7 @@ include $(LOCAL_PATH)/external/wayland.mk
 
 WAYLAND_JNI_UTIL_SRC := \
 	src/object.c \
+	src/interface.c \
 	src/fixed.c \
 	src/wayland-jni.c
 

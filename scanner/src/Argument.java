@@ -18,9 +18,9 @@ class Argument
         FD
     }
 
-    private String name;
-    private Type type;
-    private String ifaceName;
+    public String name;
+    public Type type;
+    public String ifaceName;
 
     public Argument(Element xmlElem)
     {
@@ -182,7 +182,7 @@ class Argument
         case STRING:
             return "Ljava/lang/String;";
         case OBJECT:
-            return "Lorg/freedesktop/wayland/server/" + ifaceName + ";";
+            return "Lorg/freedesktop/wayland/server/protocol" + ifaceName + ";";
         case NEW_ID:
             return "I";
         case ARRAY:

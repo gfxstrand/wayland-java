@@ -15,6 +15,7 @@ class Interface
     public Scanner scanner;
     public String name;
     public String wl_name;
+    private int version;
     private Description description;
     private ArrayList<Enum> enums;
     private ArrayList<Request> requests;
@@ -44,6 +45,7 @@ class Interface
 
         wl_name = xmlElem.getAttribute("name");
         name = toClassName(wl_name);
+        version = Integer.parseInt(xmlElem.getAttribute("version"));
 
         int eventID = 0;
         int requestID = 0;
@@ -74,6 +76,7 @@ class Interface
         // TODO: Import stuff here
         writer.write("import java.lang.String;\n");
         writer.write("import org.freedesktop.wayland.Fixed;\n");
+        writer.write("import org.freedesktop.wayland.Interface;\n");
         writer.write("import org.freedesktop.wayland.server.Client;\n");
         writer.write("import org.freedesktop.wayland.server.Resource;\n");
         writer.write("import org.freedesktop.wayland.server.RequestError;\n");
@@ -81,7 +84,7 @@ class Interface
         
         if (description != null)
             description.writeJavaDoc(writer, "");
-        writer.write("public abstract class " + name);
+        writer.write("public abstract class " + toClassName(name));
         writer.write(" extends " + SERVER_BASE_CLASS_NAME + "\n");
         writer.write("{\n");
 
@@ -91,6 +94,20 @@ class Interface
         writer.write("\t\tsuper(id);\n");
         writer.write("\t\tsetWLInterfaces();\n");
         writer.write("\t}\n");
+
+        writer.write("\n");
+        writer.write("\tpublic static final Interface WAYLAND_INTERFACE = ");
+        writer.write("new Interface(\n");
+        writer.write("\t\t\"" + wl_name + "\", ");
+        writer.write(name + ".class, " + version + ",\n");
+        writer.write("\t\tnew Interface.Message[]{\n");
+        for (Request request : requests) {
+            request.writeJavaWaylandMessageInfo(writer);
+        }
+        writer.write("\t\t},\n");
+        writer.write("\t\tnew Interface.Message[]{\n");
+        writer.write("\t\t}\n");
+        writer.write("\t);\n");
 
         for (Enum enm : enums) {
             writer.write("\n");

@@ -7,6 +7,8 @@
 wl_fixed_t wl_jni_fixed_from_java(JNIEnv * env, jobject jobj);
 jobject wl_jni_fixed_to_java(JNIEnv * env, wl_fixed_t fixed);
 
+struct wl_interface * wl_jni_interface_from_java(JNIEnv * env, jobject jobj);
+
 void wl_jni_throw_OutOfMemoryError(JNIEnv * env, const char * message);
 void wl_jni_throw_NullPointerException(JNIEnv * env, const char * message);
 

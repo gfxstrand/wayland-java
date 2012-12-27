@@ -1,6 +1,6 @@
 package org.freedesktop.wayland.server;
 
-import org.freedesktop.wayland.Object;
+import org.freedesktop.wayland.Interface;
 
 public class Resource
 {
@@ -10,6 +10,8 @@ public class Resource
     {
         _create(id);
     }
+
+    // public Resource(Object obj, int id, Interface iface);
 
     private final native void _create(int id);
 
@@ -23,6 +25,8 @@ public class Resource
     }
 
     private static native void initializeJNI();
+
+    // public static native void postEvent(int opcode, Object...args);
 
     static {
         System.loadLibrary("wayland-java-server");
