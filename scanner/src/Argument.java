@@ -21,6 +21,7 @@ class Argument
     public String name;
     public Type type;
     public String ifaceName;
+    public boolean allowNull;
 
     public Argument(Element xmlElem)
     {
@@ -64,6 +65,10 @@ class Argument
             ifaceName = null;
         else
             ifaceName = Interface.toClassName(ifaceName);
+
+        String nullstr = xmlElem.getAttribute("allow-null").toLowerCase();
+        allowNull = nullstr.equals("true") || nullstr.equals("yes")
+                || nullstr.equals("1");
     }
 
     public String getName()
@@ -156,9 +161,9 @@ class Argument
         case FIXED:
             return "f";
         case STRING:
-            return "s";
+            return allowNull ? "?s" : "s";
         case OBJECT:
-            return "o";
+            return allowNull ? "?o" : "o";
         case NEW_ID:
             return "n";
         case ARRAY:

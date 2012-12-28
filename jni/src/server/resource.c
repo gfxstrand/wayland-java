@@ -243,6 +243,8 @@ wl_jni_resource_call_request(struct wl_client * client,
     JNIEnv * env = wl_jni_get_env();
 
     int nargs, arg, i, nrefs;
+    jvalue * args;
+    const char * wl_prot_tmp;
     va_list ap;
     jobject jresource;
     jobject jclient;
@@ -258,16 +260,28 @@ wl_jni_resource_call_request(struct wl_client * client,
     struct wl_resource * res_tmp;
 
     /* Calculate the number of references and the number of arguments */
-    for (nargs = 1, nrefs = 0; wl_prototype[nargs] != '\0'; ++nargs) {
-        switch (wl_prototype[nargs - 1]) {
+    for (nargs = 1, nrefs = 0, wl_prot_tmp = wl_prototype;
+            *wl_prot_tmp != '\0'; ++wl_prot_tmp) {
+        switch (*wl_prot_tmp) {
         /* These types will require references */
         case 'f':
         case 's':
         case 'o':
         case 'a':
             ++nrefs;
+            ++nargs;
+            break;
+        case 'u':
+        case 'i':
+        case 'n':
+        case 'h':
+            ++nargs;
+            break;
+        case '?':
+            /* TODO: Do something useful here? */
             break;
         default:
+            /* TODO: Throw an error here? */
             break;
         }
     }
@@ -277,7 +291,7 @@ wl_jni_resource_call_request(struct wl_client * client,
         goto early_exception; /* Exception Thrown */
     }
 
-    jvalue * args = malloc(nargs * sizeof(jvalue));
+    args = malloc(nargs * sizeof(jvalue));
     if (args == NULL) {
         wl_jni_throw_OutOfMemoryError(env, NULL);
         goto early_exception; /* Exception Thrown */
@@ -290,14 +304,13 @@ wl_jni_resource_call_request(struct wl_client * client,
     }
 
     va_start(ap, java_prototype);
-    for (arg = 1; arg < nargs; ++arg) {
-        switch(wl_prototype[arg - 1]) {
+    for (arg = 1, wl_prot_tmp = wl_prototype; arg < nargs; ++wl_prot_tmp) {
+        switch(*wl_prot_tmp) {
         case 'f':
             fixed_tmp = va_arg(ap, wl_fixed_t);
             args[arg].l = wl_jni_fixed_to_java(env, va_arg(ap, wl_fixed_t));
             if (args[arg].l == NULL) {
                 va_end(ap);
-                --arg;
                 goto free_arguments;
             }
             break;
@@ -311,7 +324,6 @@ wl_jni_resource_call_request(struct wl_client * client,
             args[arg].l = wl_jni_string_from_utf8(env, va_arg(ap, char *));
             if ((*env)->ExceptionCheck(env) == JNI_TRUE) {
                 va_end(ap);
-                --arg;
                 goto free_arguments;
             }
             break;
@@ -320,7 +332,6 @@ wl_jni_resource_call_request(struct wl_client * client,
             args[arg].l = wl_jni_resource_to_java(env, res_tmp);
             if ((*env)->ExceptionCheck(env) == JNI_TRUE) {
                 va_end(ap);
-                --arg;
                 goto free_arguments;
             }
             break;
@@ -332,7 +343,6 @@ wl_jni_resource_call_request(struct wl_client * client,
             args[arg].l = (*env)->NewByteArray(env, array_tmp->size);
             if (args[arg].l == NULL) {
                 va_end(ap);
-                --arg;
                 goto free_arguments;
             }
 
@@ -340,13 +350,24 @@ wl_jni_resource_call_request(struct wl_client * client,
                     array_tmp->data);
             if ((*env)->ExceptionCheck(env) == JNI_TRUE) {
                 va_end(ap);
+                ++arg;
                 goto free_arguments;
             }
             break;
         case 'h':
             args[arg].i = va_arg(ap, int);
             break;
+        case '?':
+            /* Do something useful here? */
+            continue;
+        default:
+            /* Throw an error here? */
+            break;
         }
+
+        /* we do this here instead of the loop so that we can continue in the
+         * '?' case */
+        ++arg;
     }
     va_end(ap);
 
@@ -371,8 +392,13 @@ wl_jni_resource_call_request(struct wl_client * client,
     (*env)->DeleteLocalRef(env, jresource);
 
 free_arguments:
-    for (; arg >= 0; --arg) {
-        switch(wl_prototype[arg - 1]) {
+    --arg;
+    --wl_prot_tmp;
+    for (; arg >= 0; --arg, --wl_prot_tmp) {
+        if (*wl_prot_tmp == '?')
+            --wl_prot_tmp;
+
+        switch(*wl_prot_tmp) {
         case 'f':
         case 's':
         case 'o':
