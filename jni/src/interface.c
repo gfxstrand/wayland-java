@@ -25,6 +25,9 @@ static struct {
 struct wl_interface *
 wl_jni_interface_from_java(JNIEnv * env, jobject jinterface)
 {
+    if (jinterface == NULL)
+        return NULL;
+
     return (struct wl_interface *)(*env)->GetLongField(env, jinterface,
             Interface.interface_ptr);
 }
@@ -256,11 +259,11 @@ Java_org_freedesktop_wayland_Interface_initializeJNI(JNIEnv * env,
     }
 
     Interface.name = (*env)->GetFieldID(env, Interface.class,
-            "name", "java/lang/String");
+            "name", "Ljava/lang/String;");
     if (Interface.name == NULL) return; /* Exception Thrown */
 
     Interface.clazz = (*env)->GetFieldID(env, Interface.class,
-            "clazz", "java/lang/Class");
+            "clazz", "Ljava/lang/Class;");
     if (Interface.clazz == NULL) return; /* Exception Thrown */
 
     Interface.version = (*env)->GetFieldID(env, Interface.class,
@@ -288,15 +291,15 @@ Java_org_freedesktop_wayland_Interface_initializeJNI(JNIEnv * env,
     }
 
     Interface.Message.name = (*env)->GetFieldID(env, Interface.Message.class,
-            "name", "java/lang/String");
+            "name", "Ljava/lang/String;");
     if (Interface.Message.name == NULL) return; /* Exception Thrown */
 
     Interface.Message.signature = (*env)->GetFieldID(env,
-            Interface.Message.class, "signature", "java/lang/String");
+            Interface.Message.class, "signature", "Ljava/lang/String;");
     if (Interface.Message.signature == NULL) return; /* Exception Thrown */
 
     Interface.Message.javaSignature = (*env)->GetFieldID(env,
-            Interface.Message.class, "javaSignature", "java/lang/String");
+            Interface.Message.class, "javaSignature", "Ljava/lang/String;");
     if (Interface.Message.javaSignature == NULL) return; /* Exception Thrown */
 
     Interface.Message.types = (*env)->GetFieldID(env, Interface.Message.class,
