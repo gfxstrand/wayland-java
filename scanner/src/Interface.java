@@ -89,6 +89,7 @@ class Interface
         writer.write("{\n");
 
         writer.write("\tprivate native void setWLInterfaces();\n");
+        writer.write("\tprivate native static long getWLImplementation();\n");
         writer.write("\tprotected " + name + "(int id)\n");
         writer.write("\t{\n");
         writer.write("\t\tsuper(id);\n");
@@ -106,7 +107,11 @@ class Interface
         }
         writer.write("\t\t},\n");
         writer.write("\t\tnew Interface.Message[]{\n");
-        writer.write("\t\t}\n");
+        for (Event event : events) {
+            event.writeJavaWaylandMessageInfo(writer);
+        }
+        writer.write("\t\t},\n");
+        writer.write("\t\tgetWLImplementation()\n");
         writer.write("\t);\n");
 
         for (Enum enm : enums) {
@@ -155,6 +160,17 @@ class Interface
         writer.write("\tresource->object.interface = ");
         writer.write("&" + wl_name + "_interface;\n");
         writer.write("\tresource->object.implementation = ");
+        writer.write(name + "_wl_implementation;\n");
+        writer.write("}\n");
+
+        writer.write("\nJNIEXPORT long JNICALL\n");
+        writer.write("Java");
+        if (pkg != null)
+            writer.write("_" + pkg.replace(".", "_"));
+        writer.write("_" + name + "_getWLImplementation(");
+        writer.write("\n\t\tJNIEnv * __env, jclass __cls)\n");
+        writer.write("{\n");
+        writer.write("\treturn (long)");
         writer.write(name + "_wl_implementation;\n");
         writer.write("}\n");
 

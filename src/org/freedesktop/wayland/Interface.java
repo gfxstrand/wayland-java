@@ -67,6 +67,9 @@ public class Interface
     private Message[] events;
     private long interface_ptr;
 
+    // I need to get rid of this ASAP
+    private long implementation_ptr;
+
     public Interface(String name, Class<?> clazz, int version,  
             Message[] requests, Message[] events)
     {
@@ -76,8 +79,17 @@ public class Interface
         this.requests = requests;
         this.events = events;
         this.interface_ptr = 0;
+        this.implementation_ptr = 0;
 
         createNative();
+    }
+
+    public Interface(String name, Class<?> clazz, int version,  
+            Message[] requests, Message[] events, long implementation_ptr)
+    {
+        this(name, clazz, version, requests, events);
+
+        this.implementation_ptr = implementation_ptr;
     }
 
     private native void createNative();

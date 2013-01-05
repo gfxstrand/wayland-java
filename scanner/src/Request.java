@@ -110,7 +110,7 @@ class Request
         }
         writer.write("\", new Interface[]{\n");
         for (Argument arg : args) {
-            if (arg.type == Argument.Type.OBJECT) {
+            if (arg.type == Argument.Type.OBJECT && arg.ifaceName != null) {
                 writer.write("\t\t\t\t");
                 writer.write("org.freedesktop.wayland.server.protocol.");
                 writer.write(arg.ifaceName + ".WAYLAND_INTERFACE");
