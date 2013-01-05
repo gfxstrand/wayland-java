@@ -92,7 +92,7 @@ class Interface
         writer.write("\tprivate native static long getWLImplementation();\n");
         writer.write("\tprotected " + name + "(int id)\n");
         writer.write("\t{\n");
-        writer.write("\t\tsuper(id);\n");
+        writer.write("\t\tsuper(WAYLAND_INTERFACE, id);\n");
         writer.write("\t\tsetWLInterfaces();\n");
         writer.write("\t}\n");
 

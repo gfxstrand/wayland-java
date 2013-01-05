@@ -5,22 +5,53 @@ import org.freedesktop.wayland.Interface;
 public class Resource
 {
     private long resource_ptr;
+    private Object data;
 
-    protected Resource(int id)
+    private Resource(long resource_ptr, Object data)
     {
-        _create(id);
+        this.resource_ptr = resource_ptr;
+        this.data = data;
     }
 
-    // public Resource(Object obj, int id, Interface iface);
+    public
+    Resource(Interface iface, int id, Object data)
+    {
+        this.data = data;
+        _create(id, iface);
+    }
 
-    private final native void _create(int id);
+    protected
+    Resource(Interface iface, int id)
+    {
+        this.data = this;
+        _create(id, iface);
+    }
 
-    public native void destroy(Client client);
+    /**
+     * Creates the native object.
+     */
+    private final native void _create(int id, Interface iface);
+
+    /**
+     * Destroys the native object.
+     *
+     * This function only destroys the native object. It is NOT safe to call
+     * twice.
+     */
+    private final native void _destroy();
+
+    public native void destroy();
+
+    // This needs to go
+    public void destroy(Client client)
+    {
+        destroy();
+    }
 
     @Override
     public void finalize() throws Throwable
     {
-        destroy(null);
+        _destroy();
         super.finalize();
     }
 

@@ -2,12 +2,17 @@
 #define __WAYLAND_JAVA_WAYLAND_JNI_H__
 
 #include <jni.h>
+
+#include <stdint.h>
 #include "wayland-util.h"
 
 wl_fixed_t wl_jni_fixed_from_java(JNIEnv * env, jobject jobj);
 jobject wl_jni_fixed_to_java(JNIEnv * env, wl_fixed_t fixed);
 
-struct wl_interface * wl_jni_interface_from_java(JNIEnv * env, jobject jobj);
+struct wl_interface * wl_jni_interface_from_java(JNIEnv * env,
+        jobject jinterface);
+void wl_jni_interface_init_object(JNIEnv * env, jobject jinterface,
+        struct wl_object * obj);
 
 void wl_jni_throw_OutOfMemoryError(JNIEnv * env, const char * message);
 void wl_jni_throw_NullPointerException(JNIEnv * env, const char * message);

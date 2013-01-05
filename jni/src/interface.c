@@ -11,6 +11,7 @@ static struct {
     jfieldID requests;
     jfieldID events;
     jfieldID interface_ptr;
+    jfieldID implementation_ptr;
 
     struct {
         jclass class;
@@ -28,8 +29,25 @@ wl_jni_interface_from_java(JNIEnv * env, jobject jinterface)
     if (jinterface == NULL)
         return NULL;
 
-    return (struct wl_interface *)(*env)->GetLongField(env, jinterface,
-            Interface.interface_ptr);
+    return (struct wl_interface *)(intptr_t)(*env)->GetLongField(env,
+            jinterface, Interface.interface_ptr);
+}
+
+void
+wl_jni_interface_init_object(JNIEnv * env, jobject jinterface,
+        struct wl_object * obj)
+{
+    if (jinterface == NULL || obj == NULL)
+        return;
+
+    obj->interface = (struct wl_interface *)(intptr_t)(*env)->GetLongField(env,
+            jinterface, Interface.interface_ptr);
+    obj->implementation = (void (**)(void))(intptr_t)(*env)->GetLongField(env,
+            jinterface, Interface.implementation_ptr);
+
+    if (obj->implementation == NULL) {
+        /* Normally, we would set the java generic implementation here */
+    }
 }
 
 static void
@@ -281,6 +299,10 @@ Java_org_freedesktop_wayland_Interface_initializeJNI(JNIEnv * env,
     Interface.interface_ptr = (*env)->GetFieldID(env, Interface.class,
             "interface_ptr", "J");
     if (Interface.interface_ptr == NULL) return; /* Exception Thrown */
+
+    Interface.implementation_ptr = (*env)->GetFieldID(env, Interface.class,
+            "implementation_ptr", "J");
+    if (Interface.implementation_ptr == NULL) return; /* Exception Thrown */
 
     cls = (*env)->FindClass(env, "org/freedesktop/wayland/Interface$Message");
     Interface.Message.class = (*env)->NewGlobalRef(env, cls);

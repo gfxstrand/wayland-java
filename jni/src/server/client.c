@@ -1,3 +1,4 @@
+#include <stdlib.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <stdio.h>
@@ -13,7 +14,7 @@ wl_jni_client_from_java(JNIEnv * env, jobject jclient)
 {
     jclass cls = (*env)->GetObjectClass(env, jclient);
     jfieldID fid = (*env)->GetFieldID(env, cls, "client_ptr", "J");
-    return (struct wl_client *)(*env)->GetLongField(env, jclient, fid);
+    return (struct wl_client *)(intptr_t)(*env)->GetLongField(env, jclient, fid);
 }
 
 jobject
@@ -149,6 +150,68 @@ Java_org_freedesktop_wayland_server_Client_flush(JNIEnv * env, jobject jclient)
     wl_client_flush(wl_jni_client_from_java(env, jclient));
 }
 
+JNIEXPORT jobject JNICALL
+Java_org_freedesktop_wayland_server_Client_newObject(JNIEnv * env,
+        jobject jclient, jobject jiface, int id, jobject jdata)
+{
+    struct wl_client * client;
+    struct wl_resource * resource;
+    struct wl_object tmp_obj;
+    jobject jresource;
+
+    client = wl_jni_client_from_java(env, jclient);
+    if (client == NULL)
+        return NULL; /* Exception Thrown */
+
+    wl_jni_interface_init_object(env, jiface, &tmp_obj);
+    if ((*env)->ExceptionCheck(env) == JNI_TRUE)
+        return NULL; /* Exception Thrown */
+
+    resource = wl_client_new_object(client, tmp_obj.interface,
+            tmp_obj.implementation, NULL);
+    if (resource == NULL)
+        return NULL; /* Error */
+
+    jresource = wl_jni_resource_create_from_native(env, resource, jdata);
+    if (jresource == NULL) {
+        wl_resource_destroy(resource);
+        return NULL; /* Exception Thrown */
+    }
+
+    return jresource;
+}
+
+JNIEXPORT jobject JNICALL
+Java_org_freedesktop_wayland_server_Client_addObject(JNIEnv * env,
+        jobject jclient, jobject jiface, int id, jobject jdata)
+{
+    struct wl_client * client;
+    struct wl_resource * resource;
+    struct wl_object tmp_obj;
+    jobject jresource;
+
+    client = wl_jni_client_from_java(env, jclient);
+    if (client == NULL)
+        return NULL; /* Exception Thrown */
+
+    wl_jni_interface_init_object(env, jiface, &tmp_obj);
+    if ((*env)->ExceptionCheck(env) == JNI_TRUE)
+        return NULL; /* Exception Thrown */
+
+    resource = wl_client_add_object(client, tmp_obj.interface,
+            tmp_obj.implementation, id, NULL);
+    if (resource == NULL)
+        return NULL; /* Error */
+
+    jresource = wl_jni_resource_create_from_native(env, resource, jdata);
+    if (jresource == NULL) {
+        wl_resource_destroy(resource);
+        return NULL; /* Exception Thrown */
+    }
+
+    return jresource;
+}
+
 JNIEXPORT int JNICALL
 Java_org_freedesktop_wayland_server_Client_addResource(JNIEnv * env,
         jobject jclient, jobject jresource)
@@ -169,18 +232,17 @@ Java_org_freedesktop_wayland_server_Client_addResource(JNIEnv * env,
     if (client == NULL || resource == NULL)
         return; /* Exception Thrown */
 
-    /* We need to convert the weak global reference to a global reference for
-     * proper garbage collection. See also: resource.c */
-    global_ref = (*env)->NewGlobalRef(env, (jobject)resource->data);
-    if (global_ref == NULL) {
-        /* The only way this can happen is an out-of-memory error */
-        wl_jni_throw_OutOfMemoryError(env, NULL);
-        return;
-    }
-    (*env)->DeleteWeakGlobalRef(env, (jobject)resource->data);
-    resource->data = global_ref;
+    /*
+     * This will handle making sure garbage collection happens properly. Notice
+     * that this function call is before wl_client_add_resource. This is
+     * because wl_client_add_resource will modify the client parameter of the
+     * resource and might break garbage collection
+     */
+    wl_jni_resource_set_client(env, resource, client);
+    if ((*env)->ExceptionCheck(env) == JNI_TRUE)
+        return; /* Exception Thrown */
 
-    id = (int)wl_client_add_resource(client, resource);
+    return (int)wl_client_add_resource(client, resource);
 }
 
 JNIEXPORT jobject JNICALL

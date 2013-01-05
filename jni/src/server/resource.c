@@ -26,6 +26,8 @@
 struct {
     jclass class;
     jfieldID resource_ptr;
+    jfieldID data;
+    jmethodID init_long_obj;
     jmethodID destroy;
 } Resource;
 
@@ -52,54 +54,123 @@ struct {
 struct wl_resource *
 wl_jni_resource_from_java(JNIEnv * env, jobject jresource)
 {
-    return (struct wl_resource *)(*env)->GetLongField(env, jresource,
-            Resource.resource_ptr);
+    if (jresource == NULL)
+        return NULL;
+
+    return (struct wl_resource *)(intptr_t)
+            (*env)->GetLongField(env, jresource, Resource.resource_ptr);
 }
 
 jobject
 wl_jni_resource_to_java(JNIEnv * env, struct wl_resource * resource)
 {
-    return (*env)->NewLocalRef(env, (jobject)resource->data);
+    return (*env)->NewLocalRef(env, resource->data);
+}
+
+void
+wl_jni_resource_set_client(JNIEnv * env, struct wl_resource * resource,
+        struct wl_client * client)
+{
+    jobject local_ref, new_ref;
+
+    if (client == NULL && resource->client == NULL)
+        return;
+
+    local_ref = (*env)->NewLocalRef(env, resource->data);
+    if ((*env)->ExceptionCheck(env) == JNI_TRUE)
+        return; /* Exception Thrown */
+
+    // TODO: What if local_ref == NULL? Can this even happen?
+
+    if (client == NULL) {
+        /*
+         * We are unsetting the client. We already know that resource->data is
+         * not null.
+         */
+        new_ref = (*env)->NewWeakGlobalRef(env, local_ref);
+        if ((*env)->ExceptionCheck(env) == JNI_TRUE) {
+            (*env)->DeleteLocalRef(env, local_ref);
+            return; /* Exception Thrown */
+        }
+
+        (*env)->DeleteGlobalRef(env, resource->data);
+        resource->data = new_ref;
+        resource->client = NULL;
+    } else {
+        if (resource->client == NULL) {
+            /* We are setting the client */
+            new_ref = (*env)->NewGlobalRef(env, local_ref);
+            if ((*env)->ExceptionCheck(env) == JNI_TRUE) {
+                (*env)->DeleteLocalRef(env, local_ref);
+                return; /* Exception Thrown */
+            }
+
+            (*env)->DeleteWeakGlobalRef(env, resource->data);
+            resource->data = new_ref;
+            resource->client = client;
+            return;
+        } else {
+            /* This case is an error. */
+        }
+    }
+
+    /* Delete the local reference */
+    (*env)->DeleteLocalRef(env, local_ref);
 }
 
 static void
-resource_destroy(struct wl_resource * resource)
+resource_destroy_func(struct wl_resource * resource)
 {
+    JNIEnv * env;
+
     if (resource == NULL)
         return;
 
     /* This will ensure that we don't get a recursive call */
     resource->destroy = NULL;
 
-    JNIEnv * env = wl_jni_get_env();
+    env = wl_jni_get_env();
 
-    jobject jresource = wl_jni_resource_to_java(env, resource);
-    if (jresource == NULL)
-        return;
+    wl_jni_resource_set_client(env, resource, NULL);
+}
 
-    (*env)->CallVoidMethod(env, jresource, Resource.destroy, NULL);
-    (*env)->DeleteLocalRef(env, jresource);
+jobject
+wl_jni_resource_create_from_native(JNIEnv * env, struct wl_resource * resource,
+        jobject jdata)
+{
+    jobject jresource;
 
-    // TODO: Handle Exceptions
+    jresource = (*env)->NewObject(env, Resource.class, Resource.init_long_obj,
+            (long)(intptr_t)(resource), jdata);
+    if ((*env)->ExceptionCheck(env) == JNI_TRUE)
+        return NULL; /* Exception Thrown */
+
+    /* Set the apropreate type of pointer */
+    if (resource->client == NULL) {
+        resource->data = (*env)->NewWeakGlobalRef(env, jresource);
+    } else {
+        resource->data = (*env)->NewGlobalRef(env, jresource);
+    }
+
+    if ((*env)->ExceptionCheck(env) == JNI_TRUE) {
+        (*env)->DeleteLocalRef(env, jresource);
+        return NULL; /* Exception Thrown */
+    }
+
+    resource->destroy = resource_destroy_func;
+
+    return jresource;
 }
 
 JNIEXPORT void JNICALL
 Java_org_freedesktop_wayland_server_Resource__1create(JNIEnv * env,
-        jobject jresource, int id)
+        jobject jresource, int id, jobject jiface)
 {
     struct wl_resource * resource;
-    jobject global_ref;
-
-    global_ref = (*env)->NewWeakGlobalRef(env, jresource);
-    if (global_ref == NULL) {
-        wl_jni_throw_OutOfMemoryError(env, NULL);
-        return;
-    }
 
     resource = malloc(sizeof(struct wl_resource));
     if (resource == NULL) {
         wl_jni_throw_OutOfMemoryError(env, NULL);
-        (*env)->DeleteWeakGlobalRef(env, global_ref);
         return;
     }
 
@@ -107,47 +178,49 @@ Java_org_freedesktop_wayland_server_Resource__1create(JNIEnv * env,
 
     resource->object.id = id;
 
-    resource->destroy = resource_destroy;
-    resource->data = global_ref;
+    resource->destroy = resource_destroy_func;
     wl_signal_init(&resource->destroy_signal);
 
-    (*env)->SetLongField(env, jresource, Resource.resource_ptr, (long)resource);
-    if ((*env)->ExceptionCheck(env)) {
-        (*env)->DeleteWeakGlobalRef(env, global_ref);
+    wl_jni_interface_init_object(env, jiface, &resource->object);
+    if ((*env)->ExceptionCheck(env) == JNI_TRUE) {
         free(resource);
+        return;
+    }
+
+    (*env)->SetLongField(env, jresource, Resource.resource_ptr, (long)resource);
+    if ((*env)->ExceptionCheck(env) == JNI_TRUE) {
+        free(resource);
+        return;
+    }
+
+    resource->data = (*env)->NewWeakGlobalRef(env, jresource);
+    if ((*env)->ExceptionCheck(env) == JNI_TRUE) {
+        free(resource);
+        return;
     }
 }
 
 JNIEXPORT void JNICALL
+Java_org_freedesktop_wayland_server_Resource__1destroy(JNIEnv * env,
+        jobject jresource)
+{
+    struct wl_resource * resource;
+
+    resource = wl_jni_resource_from_java(env, jresource);
+    if (resource == NULL)
+        return;
+
+    free(resource);
+}
+
+JNIEXPORT void JNICALL
 Java_org_freedesktop_wayland_server_Resource_destroy(JNIEnv * env,
-        jobject jresource, jobject jclient)
+        jobject jresource)
 {
     struct wl_resource * resource = wl_jni_resource_from_java(env, jresource);
 
-    if (resource) {
-        /*
-         * We will only run the destroy if resource->destroy is not null. This
-         * prevents recursive calls. If wl_resouce_destroy() gets called
-         * directly on this resource, it will call resource_destroy() which will
-         * cause the destroy even to propogate through the chain and we will
-         * end up here. For this reason, resource_destroy() sets the destroy
-         * pointer to null so that we can detect that casae and not call
-         * wl_resource_destroy() twice. If, however, the destroy event
-         * originates from a request, this pointer will still be non-null.
-         */
-        if (resource->destroy != NULL)
-            wl_resource_destroy(resource);
-
-        if (resource->client == NULL) {
-            (*env)->DeleteWeakGlobalRef(env, (jobject)resource->data);
-        } else {
-            (*env)->DeleteGlobalRef(env, (jobject)resource->data);
-        }
-
-        free(resource);
-
-        (*env)->SetLongField(env, jresource, Resource.resource_ptr, 0);
-    }
+    if (resource)
+        wl_resource_destroy(resource);
 }
 
 static void
@@ -427,6 +500,15 @@ Java_org_freedesktop_wayland_server_Resource_initializeJNI(JNIEnv * env,
 
     Resource.resource_ptr = (*env)->GetFieldID(env, cls, "resource_ptr", "J");
     if (Resource.resource_ptr == NULL)
+        return; /* Exception Thrown */
+
+    Resource.data = (*env)->GetFieldID(env, cls, "data", "Ljava/lang/Object;");
+    if (Resource.data == NULL)
+        return; /* Exception Thrown */
+
+    Resource.init_long_obj = (*env)->GetMethodID(env, cls, "<init>",
+            "(JLjava/lang/Object;)V");
+    if (Resource.init_long_obj == NULL)
         return; /* Exception Thrown */
 
     Resource.destroy = (*env)->GetMethodID(env, cls, "destroy",
