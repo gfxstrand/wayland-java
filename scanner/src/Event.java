@@ -41,11 +41,10 @@ class Event
     {
         if (description != null)
             description.writeJavaDoc(writer, "\t");
-        writer.write("\tpublic native void " + name + "(");
+        writer.write("\tpublic static native void " + name + "(");
+        writer.write("Resource resource");
 
-        if (! args.isEmpty())
-            args.get(0).writeJavaDeclaration(writer);
-        for (int i = 1; i < args.size(); ++i) {
+        for (int i = 0; i < args.size(); ++i) {
             writer.write(", ");
             args.get(i).writeJavaDeclaration(writer);
         }
@@ -65,7 +64,7 @@ class Event
 
         writer.write("_" + iface.name);
         writer.write("_" + name + "(");
-        writer.write("\n\t\tJNIEnv * __env, jobject __jobj");
+        writer.write("\n\t\tJNIEnv * __env, jclass __cls, jobject __jres");
         for (Argument arg : args) {
             writer.write(",\n\t\t");
             writer.write(arg.getJNIType() + " " + arg.getName());
@@ -84,7 +83,7 @@ class Event
         writer.write("\n");
 
         writer.write("\twl_resource_post_event(");
-        writer.write("wl_jni_resource_from_java(__env, __jobj), " + id);
+        writer.write("wl_jni_resource_from_java(__env, __jres), " + id);
         for (Argument arg : args) {
             writer.write(",\n\t\t\t__jni_" + arg.getName());
         }

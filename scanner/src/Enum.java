@@ -75,7 +75,6 @@ class Enum
                 writer.write("\t\t" + errorName + "(String message)\n");
                 writer.write("\t\t{\n");
                 writer.write("\t\t\tsuper(message, ");
-                writer.write(iFace.getName() + ".this, ");
                 writer.write(name.toUpperCase() + "_");
                 writer.write(entry.name.toUpperCase() + ");\n");
                 writer.write("\t\t}\n");

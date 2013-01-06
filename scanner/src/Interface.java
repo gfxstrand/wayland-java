@@ -84,23 +84,15 @@ class Interface
         
         if (description != null)
             description.writeJavaDoc(writer, "");
-        writer.write("public abstract class " + toClassName(name));
-        writer.write(" extends " + SERVER_BASE_CLASS_NAME + "\n");
+        writer.write("public final class " + toClassName(name) + "\n");
         writer.write("{\n");
-
-        writer.write("\tprivate native void setWLInterfaces();\n");
-        writer.write("\tprivate native static long getWLImplementation();\n");
-        writer.write("\tprotected " + name + "(int id)\n");
-        writer.write("\t{\n");
-        writer.write("\t\tsuper(WAYLAND_INTERFACE, id);\n");
-        writer.write("\t\tsetWLInterfaces();\n");
-        writer.write("\t}\n");
+        writer.write("\tpublic static native long getWLImplementation();\n");
 
         writer.write("\n");
         writer.write("\tpublic static final Interface WAYLAND_INTERFACE = ");
         writer.write("new Interface(\n");
         writer.write("\t\t\"" + wl_name + "\", ");
-        writer.write(name + ".class, " + version + ",\n");
+        writer.write(name + ".Requests.class, " + version + ",\n");
         writer.write("\t\tnew Interface.Message[]{\n");
         for (Request request : requests) {
             request.writeJavaWaylandMessageInfo(writer);
@@ -119,10 +111,14 @@ class Interface
             enm.writeJavaDeclaration(writer);
         }
 
+        writer.write("\n");
+        writer.write("\tpublic interface Requests\n");
+        writer.write("\t{");
         for (Request request : requests) {
             writer.write("\n");
             request.writeJavaServerMethod(writer);
         }
+        writer.write("\t}\n");
 
         for (Event event : events) {
             writer.write("\n");
