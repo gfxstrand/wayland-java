@@ -58,7 +58,7 @@ class Enum
         for (Entry entry : entries) {
             if (! entry.summary.isEmpty())
                 writer.write("\t/** " + entry.summary + " */\n");
-            writer.write("\tpublic final int " + name.toUpperCase() + "_");
+            writer.write("\tpublic static final int " + name.toUpperCase() + "_");
             writer.write(entry.name.toUpperCase());
             writer.write(" = " + entry.value + ";\n");
         }

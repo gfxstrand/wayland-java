@@ -28,11 +28,7 @@ class Interface
 
     public static String toClassName(String name)
     {
-        if (name.startsWith("wl_")) {
-            name = name.substring(3);
-        }
-
-        return Scanner.toUpperCamelCase(name);
+        return name;
     }
     
     public Interface(Scanner scanner, Element xmlElem)
