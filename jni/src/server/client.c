@@ -9,25 +9,103 @@
 
 #include "server/server-jni.h"
 
+struct {
+    jclass class;
+    jmethodID init_long;
+    jmethodID init_display_int;
+    jfieldID client_ptr;
+} Client;
+
+struct wl_jni_client {
+    struct wl_listener destroy_listener;
+    struct wl_client * client;
+};
+
 struct wl_client *
 wl_jni_client_from_java(JNIEnv * env, jobject jclient)
 {
-    jclass cls = (*env)->GetObjectClass(env, jclient);
-    jfieldID fid = (*env)->GetFieldID(env, cls, "client_ptr", "J");
-    return (struct wl_client *)(intptr_t)(*env)->GetLongField(env, jclient, fid);
+    struct wl_jni_client * jni_client;
+
+    if (jclient == NULL)
+        return NULL;
+
+    jni_client = (struct wl_jni_client *)(intptr_t)
+            (*env)->GetLongField(env, jclient, Client.client_ptr);
+    if (jni_client == NULL)
+        return NULL;
+
+    return jni_client->client;
+}
+
+static void
+client_destroy_listener_func(struct wl_listener * listener, void * data)
+{
+    JNIEnv * env;
+    struct wl_jni_client * jni_client;
+    jobject jclient;
+
+    env = wl_jni_get_env();
+
+    /* we can do a direct cast here */
+    jni_client = (struct wl_jni_client *)listener;
+
+    jclient = wl_jni_find_reference(env, jni_client->client);
+    if (jclient == NULL)
+        return;
+
+    /* Remove the global reference and replace it with a weak reference */
+    wl_jni_unregister_reference(env, jni_client->client);
+    wl_jni_register_weak_reference(env, jni_client->client, jclient);
+
+    (*env)->DeleteLocalRef(env, jclient);
 }
 
 jobject
 wl_jni_client_to_java(JNIEnv * env, struct wl_client * client)
 {
-    return wl_jni_find_reference(env, client);
+    jobject jclient;
+    struct wl_jni_client * jni_client;
+
+    jclient = wl_jni_find_reference(env, client);
+    if (jclient != NULL)
+        return jclient;
+    
+    /*
+     * If we get to this point, we've never seen the client so we need to make
+     * a new wrapper object.
+     */
+
+    jni_client = malloc(sizeof(struct wl_jni_client));
+    if (jni_client == NULL) {
+        wl_jni_throw_OutOfMemoryError(env, NULL);
+        return;
+    }
+
+    jclient = (*env)->NewObject(env, Client.class, Client.init_long,
+            (long)(intptr_t)jni_client);
+    if (jclient == NULL) {
+        free(jni_client);
+        return; /* Exception Thrown */
+    }
+
+    wl_jni_register_reference(env, client, jclient);
+    if ((*env)->ExceptionCheck(env) == JNI_TRUE) {
+        (*env)->DeleteLocalRef(env, jclient);
+        free(jni_client);
+        return; /* Exception Thrown */
+    }
+
+    jni_client->client = client;
+    jni_client->destroy_listener.notify = client_destroy_listener_func;
+    wl_client_add_destroy_listener(client, &jni_client->destroy_listener);
+
+    return jclient;
 }
 
 JNIEXPORT jobject JNICALL
 Java_org_freedesktop_wayland_server_Client_startClient(JNIEnv * env,
-        jclass Client, jobject jdisplay, jobject jfile, jarray jargs)
+        jclass cls, jobject jdisplay, jobject jfile, jarray jargs)
 {
-    jclass cls;
     jmethodID mid;
     jstring jexec_path, jarg;
     jobject jclient;
@@ -113,12 +191,8 @@ Java_org_freedesktop_wayland_server_Client_startClient(JNIEnv * env,
             goto cleanup_arguments;
         }
 
-        cls = (*env)->FindClass(env, "org/freedesktop/wayland/server/Client");
-        if (cls == NULL) goto cleanup_arguments;
-        mid = (*env)->GetMethodID(env, cls, "<init>",
-                "(Lorg/freedesktop/wayland/server/Display;I)V");
-        if (mid == NULL) goto cleanup_arguments;
-        jclient = (*env)->NewObject(env, cls, mid, jdisplay, sockets[0]);
+        jclient = (*env)->NewObject(env, Client.class, Client.init_display_int,
+                jdisplay, sockets[0]);
     }
 
 cleanup_arguments:
@@ -134,14 +208,31 @@ JNIEXPORT void JNICALL
 Java_org_freedesktop_wayland_server_Client_create(JNIEnv * env, jobject jclient,
         jobject jdisplay, int fd)
 {
-    struct wl_display * display = wl_jni_display_from_java(env, jdisplay);
-    struct wl_client * client = wl_client_create(display, fd);
+    struct wl_jni_client * jni_client;
+    struct wl_display * display;
 
-    wl_jni_register_reference(env, client, jdisplay);
+    display = wl_jni_display_from_java(env, jdisplay);
 
-    jclass cls = (*env)->GetObjectClass(env, jclient);
-    jfieldID fid = (*env)->GetFieldID(env, cls, "client_ptr", "J");
-    (*env)->SetLongField(env, jclient, fid, (long)client);
+    jni_client = malloc(sizeof(struct wl_jni_client));
+    if (jni_client == NULL) {
+        wl_jni_throw_OutOfMemoryError(env, NULL);
+        return;
+    }
+
+    jni_client->client = wl_client_create(display, fd);
+
+    (*env)->SetLongField(env, jclient, Client.client_ptr,
+            (long)(intptr_t)jni_client);
+
+    wl_jni_register_reference(env, jni_client->client, jclient);
+    if ((*env)->ExceptionCheck(env) == JNI_TRUE) {
+        free(jni_client);
+        return; /* Exception Thrown */
+    }
+
+    jni_client->destroy_listener.notify = client_destroy_listener_func;
+    wl_client_add_destroy_listener(jni_client->client,
+            &jni_client->destroy_listener);
 }
 
 JNIEXPORT void JNICALL
@@ -263,9 +354,29 @@ Java_org_freedesktop_wayland_server_Client_destroy(JNIEnv * env,
 
         wl_jni_unregister_reference(env, client);
 
-        jclass cls = (*env)->GetObjectClass(env, jclient);
-        jfieldID fid = (*env)->GetFieldID(env, cls, "client_ptr", "J");
-        (*env)->SetLongField(env, jclient, fid, 0);
+        (*env)->SetLongField(env, jclient, Client.client_ptr, 0);
     }
+}
+
+JNIEXPORT void JNICALL
+Java_org_freedesktop_wayland_server_Client_initializeJNI(JNIEnv * env,
+        jclass cls)
+{
+    Client.class = (*env)->NewGlobalRef(env, cls);
+    if (Client.class == NULL)
+        return; /* Exception Thrown */
+
+    Client.init_long = (*env)->GetMethodID(env, cls, "<init>", "J");
+    if (Client.init_long == NULL)
+        return; /* Exception Thrown */
+
+    Client.init_display_int = (*env)->GetMethodID(env, cls,
+            "<init>", "(Lorg/freedesktop/wayland/server/Display;I)V");
+    if (Client.init_display_int == NULL)
+        return; /* Exception Thrown */
+
+    Client.client_ptr = (*env)->GetFieldID(env, cls, "client_ptr", "J");
+    if (Client.client_ptr == NULL)
+        return; /* Exception Thrown */
 }
 

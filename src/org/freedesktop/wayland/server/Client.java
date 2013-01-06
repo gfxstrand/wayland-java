@@ -8,6 +8,11 @@ public class Client
 {
     private long client_ptr;
 
+    private Client(long client_ptr)
+    {
+        this.client_ptr = client_ptr;
+    }
+
     public Client(Display display, int fd)
     {
         create(display, fd);
@@ -31,8 +36,11 @@ public class Client
         super.finalize();
     }
 
+    private static native void initializeJNI();
+
     static {
         System.loadLibrary("wayland-java-server");
+        initializeJNI();
     }
 }
 
