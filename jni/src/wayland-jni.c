@@ -187,52 +187,53 @@ wl_jni_get_env()
     return env;
 }
 
-int
+jobject
 wl_jni_register_reference(JNIEnv * env, void * native_ptr, jobject jobj)
 {
     struct ptr_jobject_pair * pair;
     jobject local_ref;
     
     if ((*env)->EnsureLocalCapacity(env, 1) < 0)
-        return -1;
+        return NULL; /* Exception Thrown */
 
     local_ref = (*env)->NewLocalRef(env, jobj);
     if (local_ref == NULL) {
         wl_jni_throw_NullPointerException(env, NULL);
+        return NULL; /* Exception Thrown */
     }
 
     pair = malloc(sizeof(*pair));
     if (! pair) { // Memory Check
         wl_jni_throw_OutOfMemoryError(env, NULL);
         (*env)->DeleteLocalRef(env, local_ref);
-        return -1;
+        return NULL; /* Exception Thrown */
     }
 
     pair->ptr = native_ptr;
     pair->is_weak = 0;
     pair->jobj = (*env)->NewGlobalRef(env, local_ref);
-    if (! pair->jobj) {
+    (*env)->DeleteLocalRef(env, local_ref);
+    if (pair->jobj == NULL) {
         wl_jni_throw_OutOfMemoryError(env, NULL);
-        (*env)->DeleteLocalRef(env, local_ref);
         free(pair);
-        return -1;
+        return NULL; /* Exception Thrown */
     }
 
     pthread_mutex_lock(&object_cache_mutex);
     wl_list_insert(&ptr_jobject_list, &pair->link);
     pthread_mutex_unlock(&object_cache_mutex);
 
-    return 0;
+    return pair->jobj;
 }
 
-int
+jobject
 wl_jni_register_weak_reference(JNIEnv * env, void * native_ptr, jobject jobj)
 {
     struct ptr_jobject_pair * pair;
     pair = malloc(sizeof(*pair));
     if (pair == NULL) {
         wl_jni_throw_OutOfMemoryError(env, NULL);
-        return -1;
+        return NULL; /* Exception Thrown */
     }
 
     pair->ptr = native_ptr;
@@ -240,14 +241,14 @@ wl_jni_register_weak_reference(JNIEnv * env, void * native_ptr, jobject jobj)
     pair->jobj = (*env)->NewWeakGlobalRef(env, jobj);
     if ((*env)->ExceptionCheck(env) == JNI_TRUE) {
         free(pair);
-        return -1;
+        return NULL; /* Exception Thrown */
     }
 
     pthread_mutex_lock(&object_cache_mutex);
     wl_list_insert(&ptr_jobject_list, &pair->link);
     pthread_mutex_unlock(&object_cache_mutex);
 
-    return 0;
+    return pair->jobj;
 }
 
 static void
