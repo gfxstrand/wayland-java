@@ -20,7 +20,7 @@ class Request
         this.id = id;
         args = new ArrayList<Argument>();
 
-        name = Scanner.toLowerCamelCase(xmlElem.getAttribute("name"));
+        name = StringUtil.toLowerCamelCase(xmlElem.getAttribute("name"));
 
         for (Node node = xmlElem.getFirstChild(); node != null;
                 node = node.getNextSibling()) {

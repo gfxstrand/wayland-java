@@ -144,7 +144,7 @@ class Interface
         String pkg = scanner.getJavaPackage();
         if (pkg != null)
             writer.write("_" + pkg.replace(".", "_"));
-        writer.write("_" + name + "_setWLInterfaces(");
+        writer.write("_" + StringUtil.toJNIName(name) + "_setWLInterfaces(");
         writer.write("\n\t\tJNIEnv * __env, jobject __jobj)\n");
         writer.write("{\n");
         writer.write("\tstruct wl_resource * resource;\n");
@@ -159,7 +159,7 @@ class Interface
         writer.write("Java");
         if (pkg != null)
             writer.write("_" + pkg.replace(".", "_"));
-        writer.write("_" + name + "_getWLImplementation(");
+        writer.write("_" + StringUtil.toJNIName(name) + "_getWLImplementation(");
         writer.write("\n\t\tJNIEnv * __env, jclass __cls)\n");
         writer.write("{\n");
         writer.write("\treturn (long)");

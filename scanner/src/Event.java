@@ -19,7 +19,7 @@ class Event
         this.iface = iface;
         this.id = id;
 
-        name = "post" + Scanner.toUpperCamelCase(xmlElem.getAttribute("name"));
+        name = "post" + StringUtil.toUpperCamelCase(xmlElem.getAttribute("name"));
         args = new ArrayList<Argument>();
 
         for (Node node = xmlElem.getFirstChild(); node != null;

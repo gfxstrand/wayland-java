@@ -65,7 +65,7 @@ class Enum
         
         if (name.toLowerCase().equals("error")) {
             for (Entry entry : entries) {
-                String errorName = Scanner.toUpperCamelCase(entry.name)
+                String errorName = StringUtil.toUpperCamelCase(entry.name)
                         + "Error";
 
                 writer.write("\n");

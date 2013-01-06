@@ -62,28 +62,6 @@ public class Scanner extends Task
             return javaPackage;
     }
 
-    public static String toUpperCamelCase(String string)
-    {
-        String[] words = string.split("_");
-        string = "";
-        for (int i = 0; i < words.length; ++i) {
-            String firstChar = words[i].substring(0, 1);
-            string = string + firstChar.toUpperCase() + words[i].substring(1);
-        }
-        return string; 
-    }
-
-    public static String toLowerCamelCase(String string)
-    {
-        String[] words = string.split("_");
-        string = words[0];
-        for (int i = 1; i < words.length; ++i) {
-            String firstChar = words[i].substring(0, 1);
-            string = string + firstChar.toUpperCase() + words[i].substring(1);
-        }
-        return string; 
-    }
-
     @Override
     public void execute()
     {
