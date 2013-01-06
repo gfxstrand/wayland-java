@@ -14,7 +14,7 @@ public class Global
     private Interface iface;
     private BindHandler handler;
 
-    public Global(Interface iface, BindHandler hander)
+    public Global(Interface iface, BindHandler handler)
     {
         if (iface == null)
             throw new NullPointerException("Interface cannot be null");
