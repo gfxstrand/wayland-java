@@ -34,5 +34,16 @@ void wl_jni_resource_call_request(struct wl_client * client,
         const char * method_name, const char * prototype,
         const char * java_prototype, ...);
 
+struct wl_jni_listener {
+    struct wl_listener listener;
+    struct wl_listener destroy_listener;
+    jobject self_ref;
+};
+
+struct wl_jni_listener * wl_jni_listener_from_java(JNIEnv * env,
+        jobject jlistener);
+
+void wl_jni_listener_added_to_signal(JNIEnv * env, jobject jlistener);
+
 #endif /* ! defined __WAYLAND_JAVA_SERVER_JNI_H__ */
 
