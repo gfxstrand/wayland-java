@@ -62,8 +62,8 @@ class Event
         if (pkg != null)
             writer.write("_" + pkg.replace(".", "_"));
 
-        writer.write("_" + iface.name);
-        writer.write("_" + name + "(");
+        writer.write("_" + StringUtil.toJNIName(iface.name));
+        writer.write("_" + StringUtil.toJNIName(name) + "(");
         writer.write("\n\t\tJNIEnv * __env, jclass __cls, jobject __jres");
         for (Argument arg : args) {
             writer.write(",\n\t\t");
