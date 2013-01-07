@@ -366,7 +366,7 @@ Java_org_freedesktop_wayland_server_Client_initializeJNI(JNIEnv * env,
     if (Client.class == NULL)
         return; /* Exception Thrown */
 
-    Client.init_long = (*env)->GetMethodID(env, cls, "<init>", "J");
+    Client.init_long = (*env)->GetMethodID(env, cls, "<init>", "(J)V");
     if (Client.init_long == NULL)
         return; /* Exception Thrown */
 
