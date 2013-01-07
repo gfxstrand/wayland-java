@@ -7,7 +7,8 @@ public class Resource
     private long resource_ptr;
     private Object data;
 
-    private Resource(long resource_ptr, Object data)
+    private
+    Resource(long resource_ptr, Object data)
     {
         this.resource_ptr = resource_ptr;
         this.data = data;
@@ -41,12 +42,6 @@ public class Resource
     private final native void _destroy();
 
     public native void destroy();
-
-    // This needs to go
-    public void destroy(Client client)
-    {
-        destroy();
-    }
 
     @Override
     public void finalize() throws Throwable
