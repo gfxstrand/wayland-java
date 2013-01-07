@@ -4,6 +4,11 @@
 #include <jni.h>
 
 #include <stdint.h>
+
+#include <android/log.h>
+
+#define LOG_DEBUG(...) __android_log_print(ANDROID_LOG_DEBUG, "resource.c", __VA_ARGS__)
+
 #include "wayland-util.h"
 
 wl_fixed_t wl_jni_fixed_from_java(JNIEnv * env, jobject jobj);
