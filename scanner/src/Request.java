@@ -39,12 +39,6 @@ class Request
 
     public void writeJavaServerMethod(Writer writer) throws IOException
     {
-        // We need not create headers for an empyt destroy event. One already
-        // exists in the parent class.
-        if (name.equals("destroy") && args.isEmpty()) {
-            return;
-        }
-
         if (description != null)
             description.writeJavaDoc(writer, "\t\t");
         writer.write("\t\tpublic abstract void " + name + "(");
