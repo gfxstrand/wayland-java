@@ -16,6 +16,8 @@ struct {
     jfieldID client_ptr;
 } Client;
 
+static void ensure_client_object_cache(JNIEnv * env, jclass cls);
+
 struct wl_jni_client {
     struct wl_listener destroy_listener;
     struct wl_client * client;
@@ -64,6 +66,7 @@ jobject
 wl_jni_client_to_java(JNIEnv * env, struct wl_client * client)
 {
     jobject jclient;
+    jclass cls;
     struct wl_jni_client * jni_client;
 
     jclient = wl_jni_find_reference(env, client);
@@ -74,6 +77,8 @@ wl_jni_client_to_java(JNIEnv * env, struct wl_client * client)
      * If we get to this point, we've never seen the client so we need to make
      * a new wrapper object.
      */
+
+    ensure_client_object_cache(env, NULL);
 
     jni_client = malloc(sizeof(struct wl_jni_client));
     if (jni_client == NULL) {
@@ -116,8 +121,14 @@ Java_org_freedesktop_wayland_server_Client_startClient(JNIEnv * env,
     pid_t pid;
     int sockets[2];
     int flags;
+    jvalue ctor_args[2];
 
     jclient = NULL;
+
+    /* Make sure that Client is properly loaded */
+    ensure_client_object_cache(env, cls);
+    if ((*env)->ExceptionCheck(env) == JNI_TRUE)
+        return NULL;
     
     /* Get the string for the executable path */
     cls = (*env)->GetObjectClass(env, jfile);
@@ -191,8 +202,11 @@ Java_org_freedesktop_wayland_server_Client_startClient(JNIEnv * env,
             goto cleanup_arguments;
         }
 
-        jclient = (*env)->NewObject(env, Client.class, Client.init_display_int,
-                jdisplay, sockets[0]);
+        ctor_args[0].l = jdisplay;
+        ctor_args[1].i = sockets[0];
+        jclient = (*env)->NewObjectA(env, Client.class, Client.init_display_int,
+                ctor_args);
+
     }
 
 cleanup_arguments:
@@ -366,17 +380,36 @@ Java_org_freedesktop_wayland_server_Client_initializeJNI(JNIEnv * env,
     if (Client.class == NULL)
         return; /* Exception Thrown */
 
-    Client.init_long = (*env)->GetMethodID(env, cls, "<init>", "(J)V");
+    Client.init_long = (*env)->GetMethodID(env, Client.class,
+            "<init>", "(J)V");
     if (Client.init_long == NULL)
         return; /* Exception Thrown */
 
-    Client.init_display_int = (*env)->GetMethodID(env, cls,
+    Client.init_display_int = (*env)->GetMethodID(env, Client.class,
             "<init>", "(Lorg/freedesktop/wayland/server/Display;I)V");
     if (Client.init_display_int == NULL)
         return; /* Exception Thrown */
 
-    Client.client_ptr = (*env)->GetFieldID(env, cls, "client_ptr", "J");
+    Client.client_ptr = (*env)->GetFieldID(env, Client.class,
+            "client_ptr", "J");
     if (Client.client_ptr == NULL)
         return; /* Exception Thrown */
+}
+
+static void
+ensure_client_object_cache(JNIEnv * env, jclass cls)
+{
+    if (Client.class != NULL);
+        return;
+
+    if (cls == NULL) {
+        cls = (*env)->FindClass(env, "org/freedesktop/wayland/server/Client");
+        if (cls == NULL)
+            return;
+        Java_org_freedesktop_wayland_server_Client_initializeJNI(env, cls);
+        (*env)->DeleteLocalRef(env, cls);
+    } else {
+        Java_org_freedesktop_wayland_server_Client_initializeJNI(env, cls);
+    }
 }
 

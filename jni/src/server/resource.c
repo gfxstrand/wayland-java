@@ -51,6 +51,8 @@ struct {
     } lang;
 } java;
 
+static void ensure_resource_object_cache(JNIEnv * env, jclass cls);
+
 struct wl_resource *
 wl_jni_resource_from_java(JNIEnv * env, jobject jresource)
 {
@@ -139,10 +141,20 @@ wl_jni_resource_create_from_native(JNIEnv * env, struct wl_resource * resource,
         jobject jdata)
 {
     jobject jresource;
+    jvalue args[2];
 
-    jresource = (*env)->NewObject(env, Resource.class, Resource.init_long_obj,
-            (long)(intptr_t)(resource), jdata);
-    if ((*env)->ExceptionCheck(env) == JNI_TRUE)
+    ensure_resource_object_cache(env, NULL);
+
+    /*
+     * I don't know why, but in order for the constructor to work properly with
+     * object arguments, I have to use this form
+     */
+    args[0].j = (long)(intptr_t)resource;
+    args[1].l = jdata;
+    jresource = (*env)->NewObjectA(env, Resource.class, Resource.init_long_obj,
+            args);
+
+    if (jresource == NULL)
         return NULL; /* Exception Thrown */
 
     /* Set the apropreate type of pointer */
@@ -493,26 +505,26 @@ Java_org_freedesktop_wayland_server_Resource_initializeJNI(JNIEnv * env,
         jclass cls)
 {
     Resource.class = (*env)->NewGlobalRef(env, cls);
-    if ((*env)->ExceptionCheck(env) == JNI_TRUE) {
-        wl_jni_throw_OutOfMemoryError(env, NULL);
-        return;
-    }
+    if (Resource.class == NULL)
+        return; /* Exception Thrown */
 
-    Resource.resource_ptr = (*env)->GetFieldID(env, cls, "resource_ptr", "J");
+    Resource.resource_ptr = (*env)->GetFieldID(env, Resource.class,
+            "resource_ptr", "J");
     if (Resource.resource_ptr == NULL)
         return; /* Exception Thrown */
 
-    Resource.data = (*env)->GetFieldID(env, cls, "data", "Ljava/lang/Object;");
+    Resource.data = (*env)->GetFieldID(env, Resource.class,
+            "data", "Ljava/lang/Object;");
     if (Resource.data == NULL)
         return; /* Exception Thrown */
 
-    Resource.init_long_obj = (*env)->GetMethodID(env, cls, "<init>",
-            "(JLjava/lang/Object;)V");
+    Resource.init_long_obj = (*env)->GetMethodID(env, Resource.class,
+            "<init>", "(JLjava/lang/Object;)V");
     if (Resource.init_long_obj == NULL)
         return; /* Exception Thrown */
 
-    Resource.destroy = (*env)->GetMethodID(env, cls, "destroy",
-            "(Lorg/freedesktop/wayland/server/Client;)V");
+    Resource.destroy = (*env)->GetMethodID(env, Resource.class,
+            "destroy", "(Lorg/freedesktop/wayland/server/Client;)V");
     if (Resource.destroy == NULL)
         return; /* Exception Thrown */
 
@@ -521,9 +533,9 @@ Java_org_freedesktop_wayland_server_Resource_initializeJNI(JNIEnv * env,
     if (cls == NULL)
         return; /* Exception Thrown */
     RequestError.class = (*env)->NewGlobalRef(env, cls);
+    (*env)->DeleteLocalRef(env, cls);
     if (RequestError.class == NULL)
         return; /* Exception Thrown */
-    (*env)->DeleteLocalRef(env, cls);
 
     RequestError.errorCode = (*env)->GetFieldID(env, RequestError.class,
             "errorCode", "I");
@@ -558,5 +570,22 @@ Java_org_freedesktop_wayland_server_Resource_initializeJNI(JNIEnv * env,
             java.lang.Throwable.class, "getMessage", "()Ljava/lang/String;");
     if (java.lang.Throwable.getMessage == NULL)
         return; /* Exception Thrown */
+}
+
+static void
+ensure_resource_object_cache(JNIEnv * env, jclass cls)
+{
+    if (Resource.class != NULL)
+        return;
+
+    if (cls == NULL) {
+        cls = (*env)->FindClass(env, "org/freedesktop/wayland/server/Resource");
+        if (cls == NULL)
+            return;
+        Java_org_freedesktop_wayland_server_Resource_initializeJNI(env, cls);
+        (*env)->DeleteLocalRef(env, cls);
+    } else {
+        Java_org_freedesktop_wayland_server_Resource_initializeJNI(env, cls);
+    }
 }
 
