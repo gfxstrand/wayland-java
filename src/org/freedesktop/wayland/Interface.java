@@ -2,8 +2,6 @@ package org.freedesktop.wayland;
 
 import java.io.StringWriter;
 
-import android.util.Log;
-
 public class Interface
 {
     public static class Message
@@ -18,8 +16,6 @@ public class Interface
             this.name = name;
             this.signature = signature;
             this.types = types;
-
-            Log.d("Interface", "Constructing " + name);
 
             StringWriter writer = new StringWriter();
 
