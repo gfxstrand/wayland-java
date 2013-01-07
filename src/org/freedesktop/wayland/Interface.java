@@ -2,6 +2,8 @@ package org.freedesktop.wayland;
 
 import java.io.StringWriter;
 
+import android.util.Log;
+
 public class Interface
 {
     public static class Message
@@ -17,10 +19,17 @@ public class Interface
             this.signature = signature;
             this.types = types;
 
+            Log.d("Interface", "Constructing " + name);
+
             StringWriter writer = new StringWriter();
+
             writer.write("(");
-            for (int i = 0; i < signature.length(); ++i) {
-                switch(signature.charAt(i)) {
+            int tpos = 0;
+            for (int spos = 0; spos < signature.length(); ++spos) {
+                switch(signature.charAt(spos)) {
+                case '?':
+                    // Skip '?' characters
+                    continue;
                 case 'i':
                     writer.write("I");
                     break;
@@ -34,7 +43,7 @@ public class Interface
                     writer.write("Ljava.lang.String;");
                     break;
                 case 'o':
-                    writer.write("L" + types[i].clazz.getName() + ";");
+                    writer.write("L" + types[tpos].clazz.getName() + ";");
                     break;
                 case 'n':
                     writer.write("I");
@@ -45,7 +54,11 @@ public class Interface
                 case 'h':
                     writer.write("I");
                     break;
+                default:
+                    // Skip unknown characters. Throw exception here?
+                    continue;
                 }
+                ++tpos;
             }
             writer.write(")V");
         }
@@ -70,7 +83,7 @@ public class Interface
     // I need to get rid of this ASAP
     private long implementation_ptr;
 
-    public Interface(String name, Class<?> clazz, int version,  
+    public Interface(String name, Class<?> clazz, int version,
             Message[] requests, Message[] events)
     {
         this.name = name;
