@@ -543,11 +543,6 @@ Java_org_freedesktop_wayland_server_Resource_initializeJNI(JNIEnv * env,
     if (Resource.init_long_obj == NULL)
         return; /* Exception Thrown */
 
-    Resource.destroy = (*env)->GetMethodID(env, Resource.class,
-            "destroy", "(Lorg/freedesktop/wayland/server/Client;)V");
-    if (Resource.destroy == NULL)
-        return; /* Exception Thrown */
-
     cls = (*env)->FindClass(env,
             "org/freedesktop/wayland/server/RequestError");
     if (cls == NULL)
