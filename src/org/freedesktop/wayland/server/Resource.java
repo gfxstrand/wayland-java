@@ -41,6 +41,7 @@ public class Resource
      */
     private final native void _destroy();
 
+    public native void addDestroyListener(Listener listener);
     public native void destroy();
 
     @Override

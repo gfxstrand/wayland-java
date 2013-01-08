@@ -226,6 +226,26 @@ Java_org_freedesktop_wayland_server_Resource__1destroy(JNIEnv * env,
 }
 
 JNIEXPORT void JNICALL
+Java_org_freedesktop_wayland_server_Resource_addDestroyListener(JNIEnv * env,
+        jobject jresource, jobject jlistener)
+{
+    struct wl_resource * resource;
+    struct wl_jni_listener * jni_listener;
+
+    resource = wl_jni_resource_from_java(env, jresource);
+    jni_listener = wl_jni_listener_from_java(env, jlistener);
+
+    if (jni_listener == NULL) {
+        wl_jni_throw_NullPointerException(env,
+                "Listener not allowed to be null");
+        return;
+    }
+
+    wl_signal_add(&resource->destroy_signal, &jni_listener->listener);
+    wl_signal_add(&resource->destroy_signal, &jni_listener->destroy_listener);
+}
+
+JNIEXPORT void JNICALL
 Java_org_freedesktop_wayland_server_Resource_destroy(JNIEnv * env,
         jobject jresource)
 {

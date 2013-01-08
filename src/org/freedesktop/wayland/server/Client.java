@@ -24,6 +24,7 @@ public class Client
     private native void create(Display display, int fd);
     public native void flush();
     public native int addResource(Resource resource);
+    public native void addDestroyListener(Listener listener);
     public native Resource addObject(Interface iface, int id, Object data);
     public native Resource newObject(Interface iface, Object data);
     public native Display getDisplay();
