@@ -53,7 +53,7 @@ class Event
             if (tagName.equals("description")) {
                 description = new Description(child);
             } else if (tagName.equals("arg")) {
-                args.add(new Argument(child));
+                args.add(new Argument(child, iface.scanner));
             }
         }
     }
@@ -129,7 +129,6 @@ class Event
         for (Argument arg : args) {
             if (arg.type == Argument.Type.OBJECT && arg.ifaceName != null) {
                 writer.write("\t\t\t\t");
-                writer.write("org.freedesktop.wayland.server.protocol.");
                 writer.write(arg.ifaceName + ".WAYLAND_INTERFACE");
                 writer.write(",\n");
             } else {

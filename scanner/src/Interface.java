@@ -29,9 +29,6 @@ import org.w3c.dom.Element;
 
 class Interface
 {
-    private final String SERVER_BASE_CLASS_NAME =
-            "org.freedesktop.wayland.server.Resource";
-
     public Protocol protocol;
     public Scanner scanner;
     public String name;

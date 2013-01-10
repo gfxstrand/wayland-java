@@ -43,9 +43,11 @@ class Argument
     public Type type;
     public String ifaceName;
     public boolean allowNull;
+    private Scanner scanner;
 
-    public Argument(Element xmlElem)
+    public Argument(Element xmlElem, Scanner scanner)
     {
+        this.scanner = scanner;
         name = xmlElem.getAttribute("name");
 
         // Protect some java keywords
@@ -208,8 +210,8 @@ class Argument
         case STRING:
             return "Ljava/lang/String;";
         case OBJECT:
-            return "Lorg/freedesktop/wayland/server/protocol" + ifaceName
-                    + "$Requests;";
+            return "L" + scanner.getJavaPackage().replaceAll("\\.", "/")
+                    + ifaceName + "$Requests;";
         case NEW_ID:
             return "I";
         case ARRAY:
