@@ -62,6 +62,10 @@ static struct {
         struct {
             jclass class;
         } NullPointerException;
+
+        struct {
+            jclass class;
+        } IllegalArgumentException;
     } lang;
 
     struct {
@@ -103,12 +107,10 @@ wl_jni_ensure_object_cache(JNIEnv * env)
     cls = (*env)->FindClass(env, "java/lang/OutOfMemoryError");
     if (cls == NULL) goto exception;
     java.lang.OutOfMemoryError.class = (*env)->NewGlobalRef(env, cls);
+    (*env)->DeleteLocalRef(env, cls);
     if (java.lang.OutOfMemoryError.class == NULL) {
-        (*env)->ThrowNew(env, cls, NULL);
-        (*env)->DeleteLocalRef(env, cls);
         goto exception;
     }
-    (*env)->DeleteLocalRef(env, cls);
     cls = NULL;
 
     cls = (*env)->FindClass(env, "java/lang/NullPointerException");
@@ -116,7 +118,15 @@ wl_jni_ensure_object_cache(JNIEnv * env)
     java.lang.NullPointerException.class = (*env)->NewGlobalRef(env, cls);
     (*env)->DeleteLocalRef(env, cls);
     if (java.lang.NullPointerException.class == NULL) {
-        wl_jni_throw_OutOfMemoryError(env, NULL);
+        goto exception;
+    }
+    cls = NULL;
+
+    cls = (*env)->FindClass(env, "java/lang/IllegalArgumentException");
+    if (cls == NULL) goto exception;
+    java.lang.IllegalArgumentException.class = (*env)->NewGlobalRef(env, cls);
+    (*env)->DeleteLocalRef(env, cls);
+    if (java.lang.IllegalArgumentException.class == NULL) {
         goto exception;
     }
     cls = NULL;
@@ -197,6 +207,15 @@ wl_jni_throw_NullPointerException(JNIEnv * env, const char * message)
         return;
 
     (*env)->ThrowNew(env, java.lang.NullPointerException.class, message);
+}
+
+void
+wl_jni_throw_IllegalArgumentException(JNIEnv * env, const char * message)
+{
+    if (wl_jni_ensure_object_cache(env) < 0)
+        return;
+
+    (*env)->ThrowNew(env, java.lang.IllegalArgumentException.class, message);
 }
 
 JNIEnv *
