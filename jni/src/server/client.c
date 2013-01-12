@@ -23,6 +23,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <stdio.h>
+#include <errno.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 
@@ -255,6 +256,8 @@ Java_org_freedesktop_wayland_server_Client_create(JNIEnv * env, jobject jclient,
     }
 
     jni_client->client = wl_client_create(display, fd);
+    if (jni_client == NULL)
+        wl_jni_throw_from_errno(env, errno);
 
     (*env)->SetLongField(env, jclient, Client.client_ptr,
             (long)(intptr_t)jni_client);
