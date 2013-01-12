@@ -23,7 +23,13 @@ package org.freedesktop.wayland.server;
 
 public class EventLoop
 {
-    public class EventSource
+
+    public static final int EVENT_READABLE = 0x01;
+    public static final int EVENT_WRITABLE = 0x02;
+    public static final int EVENT_HANGUP   = 0x04;
+    public static final int EVENT_ERROR    = 0x08;
+    
+    public static class EventSource
     {
         private long event_src_ptr;
         
@@ -35,7 +41,7 @@ public class EventLoop
 
     public interface FileDescriptorEventHandler
     {
-        public abstract int handleFileDestriptorEvent(int fd, int mask);
+        public abstract int handleFileDescriptorEvent(int fd, int mask);
     }
 
     public interface TimerEventHandler
@@ -54,18 +60,15 @@ public class EventLoop
     }
 
     private long event_loop_ptr;
-    private final boolean isWrapper;
 
     private EventLoop(long native_ptr)
     {
-        isWrapper = true;
-        create(native_ptr);
+        _create(native_ptr);
     }
 
     public EventLoop()
     {
-        isWrapper = false;
-        create(0);
+        _create(0);
     }
 
     public native EventSource addFileDescriptor(int fd, int mask,
@@ -81,18 +84,21 @@ public class EventLoop
     public native int dispatch(int timeout);
     public native void dispatchIdle();
 
-    private native void create(long native_ptr);
-    private native void destroy();
+    private native void _create(long native_ptr);
+    private native void _destroy();
 
     @Override
     public void finalize() throws Throwable
     {
-        destroy();
+        _destroy();
         super.finalize();
     }
 
+    private static native void initializeJNI();
+
     static {
         System.loadLibrary("wayland-java-server");
+        initializeJNI();
     }
 }
 
