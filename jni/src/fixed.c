@@ -36,7 +36,9 @@ wl_jni_fixed_to_java(JNIEnv * env, wl_fixed_t fixed)
 {
     jclass cls = (*env)->FindClass(env, "org/freedesktop/wayland/Fixed");
     jmethodID cid = (*env)->GetMethodID(env, cls, "<init>", "(I)V");
-    jobject jfixed = (*env)->NewObject(env, cls, cid, (jint)fixed);
+    jvalue args[1];
+    args[0].i = fixed;
+    jobject jfixed = (*env)->NewObjectA(env, cls, cid, args);
     (*env)->DeleteLocalRef(env, cls);
     return jfixed;
 }

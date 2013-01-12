@@ -90,6 +90,7 @@ wl_jni_client_to_java(JNIEnv * env, struct wl_client * client)
     jobject jclient;
     jclass cls;
     struct wl_jni_client * jni_client;
+    jvalue args[1];
 
     jclient = wl_jni_find_reference(env, client);
     if (jclient != NULL)
@@ -108,8 +109,8 @@ wl_jni_client_to_java(JNIEnv * env, struct wl_client * client)
         return;
     }
 
-    jclient = (*env)->NewObject(env, Client.class, Client.init_long,
-            (long)(intptr_t)jni_client);
+    args[0].j = (intptr_t)jni_client;
+    jclient = (*env)->NewObjectA(env, Client.class, Client.init_long, args);
     if (jclient == NULL) {
         free(jni_client);
         return; /* Exception Thrown */
