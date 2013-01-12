@@ -28,7 +28,7 @@
 
 #include <android/log.h>
 
-#define LOG_DEBUG(...) __android_log_print(ANDROID_LOG_DEBUG, "resource.c", __VA_ARGS__)
+#define LOG_DEBUG(...) __android_log_print(ANDROID_LOG_DEBUG, __FILE__, __VA_ARGS__)
 
 #include "wayland-util.h"
 
