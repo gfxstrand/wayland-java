@@ -23,6 +23,7 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <errno.h>
 
 #include <pthread.h>
 
@@ -66,7 +67,17 @@ static struct {
         struct {
             jclass class;
         } IllegalArgumentException;
+
+        struct {
+            jclass class;
+        } RuntimeException;
     } lang;
+
+    struct {
+        struct {
+            jclass class;
+        } IOException;
+    } io;
 
     struct {
         struct {
@@ -127,6 +138,24 @@ wl_jni_ensure_object_cache(JNIEnv * env)
     java.lang.IllegalArgumentException.class = (*env)->NewGlobalRef(env, cls);
     (*env)->DeleteLocalRef(env, cls);
     if (java.lang.IllegalArgumentException.class == NULL) {
+        goto exception;
+    }
+    cls = NULL;
+
+    cls = (*env)->FindClass(env, "java/lang/RuntimeException");
+    if (cls == NULL) goto exception;
+    java.lang.RuntimeException.class = (*env)->NewGlobalRef(env, cls);
+    (*env)->DeleteLocalRef(env, cls);
+    if (java.lang.RuntimeException.class == NULL) {
+        goto exception;
+    }
+    cls = NULL;
+
+    cls = (*env)->FindClass(env, "java/io/IOException");
+    if (cls == NULL) goto exception;
+    java.io.IOException.class = (*env)->NewGlobalRef(env, cls);
+    (*env)->DeleteLocalRef(env, cls);
+    if (java.io.IOException.class == NULL) {
         goto exception;
     }
     cls = NULL;
@@ -216,6 +245,26 @@ wl_jni_throw_IllegalArgumentException(JNIEnv * env, const char * message)
         return;
 
     (*env)->ThrowNew(env, java.lang.IllegalArgumentException.class, message);
+}
+
+void
+wl_jni_throw_from_errno(JNIEnv * env, int err)
+{
+    switch (err) {
+    case EINVAL:
+        wl_jni_throw_IllegalArgumentException(env, strerror(err));
+        return;
+    case EIO:
+    case EBADF:
+        (*env)->ThrowNew(env, java.io.IOException.class, strerror(err));
+        return;
+    case ENOMEM:
+        wl_jni_throw_OutOfMemoryError(env, NULL);
+        return;
+    default:
+        (*env)->ThrowNew(env, java.lang.RuntimeException.class, strerror(err));
+        return;
+    }
 }
 
 JNIEnv *

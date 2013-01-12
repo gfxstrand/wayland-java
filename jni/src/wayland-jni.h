@@ -43,6 +43,7 @@ void wl_jni_interface_init_object(JNIEnv * env, jobject jinterface,
 void wl_jni_throw_OutOfMemoryError(JNIEnv * env, const char * message);
 void wl_jni_throw_NullPointerException(JNIEnv * env, const char * message);
 void wl_jni_throw_IllegalArgumentException(JNIEnv * env, const char * message);
+void wl_jni_throw_from_errno(JNIEnv * env, int err);
 
 extern JavaVM * java_vm;
 
