@@ -20,6 +20,8 @@
  * OF THIS SOFTWARE.
  */
 #include <stdlib.h>
+#include <string.h>
+#include <errno.h>
 #include <wayland-server.h>
 
 #include "server/server-jni.h"
@@ -107,8 +109,10 @@ event_loop_data_add_event_handler(JNIEnv * env,
         struct event_loop_data * loop_data, jobject jhandler, jmethodID method)
 {
     struct event_handler * handler = malloc(sizeof(struct event_handler));
-    if (handler == NULL)
-        return NULL; // TODO: Throw Exception
+    if (handler == NULL) {
+        wl_jni_throw_OutOfMemoryError(env, NULL);
+        return NULL;
+    }
 
     handler->jhandler = (*env)->NewGlobalRef(env, jhandler);
     if (handler->jhandler == NULL) {
@@ -191,10 +195,15 @@ Java_org_freedesktop_wayland_server_EventLoop_addFileDescriptor(JNIEnv * env,
     struct event_loop_data * loop_data =
             event_loop_data_from_java(env, jevent_loop);
 
+    if (fd < 0) {
+        wl_jni_throw_IllegalArgumentException(env,
+                "File descriptor is negative");
+        return NULL; /* Exception Thrown */
+    }
+
     struct event_handler * event_handler =
             event_loop_data_add_event_handler(env, loop_data, jhandler,
             EventLoop.FileDescriptorEventHandler.handleFileDescriptorEvent);
-
     if (event_handler == NULL)
         return NULL; /* Exception Thrown */
 
@@ -203,6 +212,8 @@ Java_org_freedesktop_wayland_server_EventLoop_addFileDescriptor(JNIEnv * env,
                 handle_event_loop_fd_call, event_handler);
     if (event_source == NULL) {
         event_loop_data_remove_event_handler(env, event_handler);
+        wl_jni_throw_IllegalArgumentException(env,
+                strerror(errno));
         return NULL; /* Exception Thrown */
     }
 
