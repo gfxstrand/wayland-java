@@ -409,7 +409,6 @@ wl_jni_string_from_utf8(JNIEnv * env, const char * str)
     int len;
     jstring java_str;
     jarray bytes;
-    jvalue args[2];
 
     if (str == NULL)
         return NULL;
@@ -431,10 +430,8 @@ wl_jni_string_from_utf8(JNIEnv * env, const char * str)
     if ((*env)->ExceptionCheck(env) == JNI_TRUE)
         goto cleanup;
 
-    args[0].l = bytes;
-    args[1].l = java.nio.charset.utf8;
-    java_str = (*env)->NewObjectA(env, java.lang.String.class,
-            java.lang.String.init_bytes_charset, args);
+    java_str = (*env)->NewObject(env, java.lang.String.class,
+            java.lang.String.init_bytes_charset, bytes, java.nio.charset.utf8);
     if ((*env)->ExceptionCheck(env) == JNI_TRUE)
         goto cleanup;
 

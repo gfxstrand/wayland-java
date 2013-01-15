@@ -106,7 +106,7 @@ Java_org_freedesktop_wayland_server_Listener__1create(JNIEnv * env,
     // TODO: Set callbacks
 
     (*env)->SetLongField(env, jlistener, Listener.listener_ptr,
-            (long)(intptr_t)jni_listener);
+            (jlong)(intptr_t)jni_listener);
 }
 
 JNIEXPORT void JNICALL

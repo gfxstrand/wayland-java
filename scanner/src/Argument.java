@@ -154,9 +154,9 @@ class Argument
     {
         switch (type) {
         case INT:
-            return "int";
+            return "jint";
         case UINT:
-            return "int";
+            return "jint";
         case FIXED:
             return "jobject";
         case STRING:
@@ -164,11 +164,11 @@ class Argument
         case OBJECT:
             return "jobject";
         case NEW_ID:
-            return "int";
+            return "jint";
         case ARRAY:
             return "jarray";
         case FD:
-            return "int";
+            return "jint";
         default:
             return null;
         }

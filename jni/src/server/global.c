@@ -64,9 +64,9 @@ wl_jni_global_set_data(JNIEnv * env, jobject jglobal, jobject self_ref,
         struct wl_global * global)
 {
     (*env)->SetLongField(env, jglobal, Global.self_ref,
-            (long)(intptr_t)self_ref);
+            (jlong)(intptr_t)self_ref);
     (*env)->SetLongField(env, jglobal, Global.global_ptr,
-            (long)(intptr_t)global);
+            (jlong)(intptr_t)global);
 }
 
 // FIXME: This isn't exception-safe!!!
@@ -92,7 +92,7 @@ wl_jni_global_bind_func(struct wl_client * client, void * data,
     jclient = wl_jni_client_to_java(env, client);
 
     (*env)->CallVoidMethod(env, jhandler, Global.BindHandler.bindClient,
-            jclient, (int)version, (int)id);
+            jclient, (jint)version, (jint)id);
 
     (*env)->DeleteLocalRef(env, jglobal);
 }

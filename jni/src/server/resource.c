@@ -162,19 +162,11 @@ wl_jni_resource_create_from_native(JNIEnv * env, struct wl_resource * resource,
         jobject jdata)
 {
     jobject jresource;
-    jvalue args[2];
 
     ensure_resource_object_cache(env, NULL);
 
-    /*
-     * I don't know why, but in order for the constructor to work properly with
-     * object arguments, I have to use this form
-     */
-    args[0].j = (long)(intptr_t)resource;
-    args[1].l = jdata;
-    jresource = (*env)->NewObjectA(env, Resource.class, Resource.init_long_obj,
-            args);
-
+    jresource = (*env)->NewObject(env, Resource.class, Resource.init_long_obj,
+            (jlong)(intptr_t)resource, jdata);
     if (jresource == NULL)
         return NULL; /* Exception Thrown */
 
@@ -197,7 +189,7 @@ wl_jni_resource_create_from_native(JNIEnv * env, struct wl_resource * resource,
 
 JNIEXPORT void JNICALL
 Java_org_freedesktop_wayland_server_Resource__1create(JNIEnv * env,
-        jobject jresource, int id, jobject jiface)
+        jobject jresource, jint id, jobject jiface)
 {
     struct wl_resource * resource;
 
@@ -209,7 +201,7 @@ Java_org_freedesktop_wayland_server_Resource__1create(JNIEnv * env,
 
     memset(resource, 0, sizeof(struct wl_resource));
 
-    resource->object.id = id;
+    resource->object.id = (uint32_t)id;
 
     resource->destroy = resource_destroy_func;
     wl_signal_init(&resource->destroy_signal);
@@ -220,7 +212,8 @@ Java_org_freedesktop_wayland_server_Resource__1create(JNIEnv * env,
         return;
     }
 
-    (*env)->SetLongField(env, jresource, Resource.resource_ptr, (long)resource);
+    (*env)->SetLongField(env, jresource, Resource.resource_ptr,
+            (jlong)(intptr_t)resource);
     if ((*env)->ExceptionCheck(env) == JNI_TRUE) {
         free(resource);
         return;
@@ -481,7 +474,7 @@ wl_jni_resource_call_request(struct wl_client * client,
             }
             break;
         case 'h':
-            args[arg].i = va_arg(ap, int);
+            args[arg].i = (jint)va_arg(ap, int);
             break;
         case '?':
             /* Do something useful here? */

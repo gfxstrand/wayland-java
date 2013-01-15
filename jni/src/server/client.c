@@ -90,7 +90,6 @@ wl_jni_client_to_java(JNIEnv * env, struct wl_client * client)
     jobject jclient;
     jclass cls;
     struct wl_jni_client * jni_client;
-    jvalue args[1];
 
     jclient = wl_jni_find_reference(env, client);
     if (jclient != NULL)
@@ -109,8 +108,8 @@ wl_jni_client_to_java(JNIEnv * env, struct wl_client * client)
         return;
     }
 
-    args[0].j = (intptr_t)jni_client;
-    jclient = (*env)->NewObjectA(env, Client.class, Client.init_long, args);
+    jclient = (*env)->NewObject(env, Client.class, Client.init_long,
+            (jlong)(intptr_t)jni_client);
     if (jclient == NULL) {
         free(jni_client);
         return; /* Exception Thrown */
@@ -144,7 +143,6 @@ Java_org_freedesktop_wayland_server_Client_startClient(JNIEnv * env,
     pid_t pid;
     int sockets[2];
     int flags;
-    jvalue ctor_args[2];
 
     jclient = NULL;
 
@@ -225,10 +223,8 @@ Java_org_freedesktop_wayland_server_Client_startClient(JNIEnv * env,
             goto cleanup_arguments;
         }
 
-        ctor_args[0].l = jdisplay;
-        ctor_args[1].i = sockets[0];
-        jclient = (*env)->NewObjectA(env, Client.class, Client.init_display_int,
-                ctor_args);
+        jclient = (*env)->NewObject(env, Client.class, Client.init_display_int,
+                jdisplay, (jint)sockets[0]);
 
     }
 
@@ -243,7 +239,7 @@ cleanup_arguments:
 
 JNIEXPORT void JNICALL
 Java_org_freedesktop_wayland_server_Client_create(JNIEnv * env, jobject jclient,
-        jobject jdisplay, int fd)
+        jobject jdisplay, jint fd)
 {
     struct wl_jni_client * jni_client;
     struct wl_display * display;
@@ -261,7 +257,7 @@ Java_org_freedesktop_wayland_server_Client_create(JNIEnv * env, jobject jclient,
         wl_jni_throw_from_errno(env, errno);
 
     (*env)->SetLongField(env, jclient, Client.client_ptr,
-            (long)(intptr_t)jni_client);
+            (jlong)(intptr_t)jni_client);
 
     wl_jni_register_reference(env, jni_client->client, jclient);
     if ((*env)->ExceptionCheck(env) == JNI_TRUE) {
@@ -282,7 +278,7 @@ Java_org_freedesktop_wayland_server_Client_flush(JNIEnv * env, jobject jclient)
 
 JNIEXPORT jobject JNICALL
 Java_org_freedesktop_wayland_server_Client_newObject(JNIEnv * env,
-        jobject jclient, jobject jiface, int id, jobject jdata)
+        jobject jclient, jobject jiface, jobject jdata)
 {
     struct wl_client * client;
     struct wl_resource * resource;
@@ -333,7 +329,7 @@ Java_org_freedesktop_wayland_server_Client_addDestroyListener(JNIEnv * env,
 
 JNIEXPORT jobject JNICALL
 Java_org_freedesktop_wayland_server_Client_addObject(JNIEnv * env,
-        jobject jclient, jobject jiface, int id, jobject jdata)
+        jobject jclient, jobject jiface, jint id, jobject jdata)
 {
     struct wl_client * client;
     struct wl_resource * resource;
@@ -349,7 +345,7 @@ Java_org_freedesktop_wayland_server_Client_addObject(JNIEnv * env,
         return NULL; /* Exception Thrown */
 
     resource = wl_client_add_object(client, tmp_obj.interface,
-            tmp_obj.implementation, id, NULL);
+            tmp_obj.implementation, (uint32_t)id, NULL);
     if (resource == NULL)
         return NULL; /* Error */
 
@@ -362,7 +358,7 @@ Java_org_freedesktop_wayland_server_Client_addObject(JNIEnv * env,
     return jresource;
 }
 
-JNIEXPORT int JNICALL
+JNIEXPORT jint JNICALL
 Java_org_freedesktop_wayland_server_Client_addResource(JNIEnv * env,
         jobject jclient, jobject jresource)
 {
@@ -370,7 +366,6 @@ Java_org_freedesktop_wayland_server_Client_addResource(JNIEnv * env,
     struct wl_client * client;
     struct wl_resource * resource;
     jobject global_ref;
-    int id;
 
     if (jresource == NULL) {
         wl_jni_throw_NullPointerException(env, NULL);
@@ -392,7 +387,7 @@ Java_org_freedesktop_wayland_server_Client_addResource(JNIEnv * env,
     if ((*env)->ExceptionCheck(env) == JNI_TRUE)
         return; /* Exception Thrown */
 
-    return (int)wl_client_add_resource(client, resource);
+    return (jint)wl_client_add_resource(client, resource);
 }
 
 JNIEXPORT jobject JNICALL

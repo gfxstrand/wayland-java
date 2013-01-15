@@ -53,7 +53,7 @@ Java_org_freedesktop_wayland_server_Display_getEventLoop(JNIEnv * env,
     return wl_jni_event_loop_to_java(env, wl_display_get_event_loop(display));
 }
 
-JNIEXPORT int JNICALL
+JNIEXPORT jint JNICALL
 Java_org_freedesktop_wayland_server_Display_addSocket(JNIEnv * env,
         jobject jdisplay, jobject jname)
 {
@@ -75,7 +75,7 @@ Java_org_freedesktop_wayland_server_Display_addSocket(JNIEnv * env,
 
     free(name);
 
-    return fd;
+    return (jint)fd;
 }
 
 JNIEXPORT void JNICALL
@@ -156,14 +156,14 @@ Java_org_freedesktop_wayland_server_Display_doRemoveGlobal(JNIEnv * env,
     wl_jni_global_release(env, jglobal);
 }
 
-JNIEXPORT int JNICALL
+JNIEXPORT jint JNICALL
 Java_org_freedesktop_wayland_server_Display_getSerial(JNIEnv * env,
         jobject jdisplay)
 {
     return wl_display_get_serial(wl_jni_display_from_java(env, jdisplay));
 }
 
-JNIEXPORT int JNICALL
+JNIEXPORT jint JNICALL
 Java_org_freedesktop_wayland_server_Display_nextSerial(JNIEnv * env,
         jobject jdisplay)
 {
@@ -180,7 +180,7 @@ Java_org_freedesktop_wayland_server_Display_create(JNIEnv * env,
 
     jclass cls = (*env)->GetObjectClass(env, jdisplay);
     jfieldID fid = (*env)->GetFieldID(env, cls, "display_ptr", "J");
-    (*env)->SetLongField(env, jdisplay, fid, (long)display);
+    (*env)->SetLongField(env, jdisplay, fid, (jlong)(intptr_t)display);
 }
 
 JNIEXPORT void JNICALL

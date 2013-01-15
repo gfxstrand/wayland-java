@@ -150,7 +150,7 @@ class Interface
         }
 
         writer.write("\nstatic const __void_function ");
-        writer.write(name + "_wl_implementation[] = {\n");
+        writer.write(name + "_implementation[] = {\n");
         for (Request request : requests) {
             writer.write("\t(__void_function)&");
             writer.write(request.getCServerWrapperName() + ",\n");
@@ -170,18 +170,18 @@ class Interface
         writer.write("\tresource->object.interface = ");
         writer.write("&" + wl_name + "_interface;\n");
         writer.write("\tresource->object.implementation = ");
-        writer.write(name + "_wl_implementation;\n");
+        writer.write(name + "_implementation;\n");
         writer.write("}\n");
 
-        writer.write("\nJNIEXPORT long JNICALL\n");
+        writer.write("\nJNIEXPORT jlong JNICALL\n");
         writer.write("Java");
         if (pkg != null)
             writer.write("_" + pkg.replace(".", "_"));
         writer.write("_" + StringUtil.toJNIName(name) + "_getWLImplementation(");
         writer.write("\n\t\tJNIEnv * __env, jclass __cls)\n");
         writer.write("{\n");
-        writer.write("\treturn (long)");
-        writer.write(name + "_wl_implementation;\n");
+        writer.write("\treturn (jlong)(intptr_t)");
+        writer.write(name + "_implementation;\n");
         writer.write("}\n");
 
         for (Event event : events) {

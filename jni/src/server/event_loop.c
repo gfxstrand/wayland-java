@@ -138,12 +138,8 @@ event_loop_data_remove_event_handler(JNIEnv * env,
 static jobject
 event_source_create(JNIEnv * env, struct wl_event_source * wl_event_source)
 {
-    jvalue args[1];
-
-    args[0].j = (long)(intptr_t)wl_event_source;
-
-    return (*env)->NewObjectA(env, EventLoop.EventSource.class,
-            EventLoop.EventSource.init_long, args);
+    return (*env)->NewObject(env, EventLoop.EventSource.class,
+            EventLoop.EventSource.init_long, (jlong)(intptr_t)wl_event_source);
 }
 
 static struct event_loop_data *
@@ -165,7 +161,6 @@ jobject
 wl_jni_event_loop_to_java(JNIEnv * env, struct wl_event_loop * event_loop)
 {
     jobject jevent_loop;
-    jvalue args[1];
     
     jevent_loop = wl_jni_find_reference(env, event_loop);
     if (jevent_loop != NULL)
@@ -176,9 +171,8 @@ wl_jni_event_loop_to_java(JNIEnv * env, struct wl_event_loop * event_loop)
     if ((*env)->ExceptionCheck(env) == JNI_TRUE)
         return NULL; /* Exception Thrown */
 
-    args[0].j = (long)(intptr_t)event_loop;
-
-    return (*env)->NewObjectA(env, EventLoop.class, EventLoop.init_long, args);
+    return (*env)->NewObject(env, EventLoop.class, EventLoop.init_long,
+            (jlong)(intptr_t)event_loop);
 }
 
 static int
@@ -189,7 +183,7 @@ handle_event_loop_fd_call(int fd, uint32_t mask, void *data)
     JNIEnv * env = wl_jni_get_env();
 
     int ret = (*env)->CallIntMethod(env, handler->jhandler, handler->mid,
-            fd, (int)mask);
+            (jint)fd, (jint)mask);
 
     // TODO: Handle Exceptions
 
@@ -198,7 +192,7 @@ handle_event_loop_fd_call(int fd, uint32_t mask, void *data)
 
 JNIEXPORT jobject JNICALL
 Java_org_freedesktop_wayland_server_EventLoop_addFileDescriptor(JNIEnv * env,
-        jobject jevent_loop, int fd, int mask, jobject jhandler)
+        jobject jevent_loop, jint fd, jint mask, jobject jhandler)
 {
     struct event_loop_data * loop_data;
     struct event_handler * event_handler;
@@ -219,8 +213,8 @@ Java_org_freedesktop_wayland_server_EventLoop_addFileDescriptor(JNIEnv * env,
     if (event_handler == NULL)
         return NULL; /* Exception Thrown */
 
-    event_source = wl_event_loop_add_fd(loop_data->event_loop, fd, mask,
-                handle_event_loop_fd_call, event_handler);
+    event_source = wl_event_loop_add_fd(loop_data->event_loop, fd,
+            (uint32_t)mask, handle_event_loop_fd_call, event_handler);
     if (event_source == NULL) {
         event_loop_data_remove_event_handler(env, event_handler);
         wl_jni_throw_from_errno(env, errno);
@@ -290,7 +284,7 @@ handle_event_loop_signal_call(int signal_number, void * data)
     JNIEnv * env = wl_jni_get_env();
 
     int ret = (*env)->CallIntMethod(env, handler->jhandler, handler->mid,
-            signal_number);
+            (jint)signal_number);
 
     // TODO: Handle Exceptions
 
@@ -299,7 +293,7 @@ handle_event_loop_signal_call(int signal_number, void * data)
 
 JNIEXPORT jobject JNICALL
 Java_org_freedesktop_wayland_server_EventLoop_addSignal(JNIEnv * env,
-        jobject jevent_loop, int signal_number, jobject jhandler)
+        jobject jevent_loop, jint signal_number, jobject jhandler)
 {
     struct event_loop_data * loop_data =
             event_loop_data_from_java(env, jevent_loop);
@@ -375,7 +369,7 @@ Java_org_freedesktop_wayland_server_EventLoop_addIdle(JNIEnv * env,
 
 JNIEXPORT void JNICALL
 Java_org_freedesktop_wayland_server_EventLoop_dispatch(JNIEnv * env,
-        jobject jevent_loop, int timeout)
+        jobject jevent_loop, jint timeout)
 {
     struct wl_event_loop * event_loop =
             wl_jni_event_loop_from_java(env, jevent_loop);
@@ -395,7 +389,7 @@ Java_org_freedesktop_wayland_server_EventLoop_dispatchIdle(JNIEnv * env,
 
 JNIEXPORT void JNICALL
 Java_org_freedesktop_wayland_server_EventLoop__1create(JNIEnv * env,
-        jobject jevent_loop, long native_ptr)
+        jobject jevent_loop, jlong native_ptr)
 {
     struct wl_event_loop * event_loop;
 
@@ -414,7 +408,7 @@ Java_org_freedesktop_wayland_server_EventLoop__1create(JNIEnv * env,
         return; /* Exception Thrown */
 
     (*env)->SetLongField(env, jevent_loop, EventLoop.event_loop_ptr,
-            (long)(intptr_t)event_loop_data_create(env, event_loop));
+            (jlong)(intptr_t)event_loop_data_create(env, event_loop));
 }
 
 JNIEXPORT void JNICALL

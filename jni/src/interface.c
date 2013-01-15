@@ -149,7 +149,7 @@ Java_org_freedesktop_wayland_Interface_createNative(JNIEnv * env,
     }
 
     (*env)->SetLongField(env, jinterface, Interface.interface_ptr,
-            (long)interface);
+            (jlong)interface);
 
     jstr = (*env)->GetObjectField(env, jinterface, Interface.name);
     if ((*env)->ExceptionCheck(env) == JNI_TRUE) goto delete_interface;
