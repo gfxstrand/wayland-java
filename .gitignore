@@ -1,8 +1,8 @@
 .*.swp
 local.properties
-bin/
-gen/
-obj/
+android/bin/
+android/gen/
+android/obj/
 src/org/freedesktop/wayland/server/protocol
 jni/src/server/protocol.c
 scanner/classes
