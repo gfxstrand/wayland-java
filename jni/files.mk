@@ -33,3 +33,7 @@ WAYLAND_JNI_SERVER_SRC := $(WAYLAND_JNI_UTIL_SRC) \
 	src/server/listener.c \
 	src/server/protocol.c
 
+WAYLAND_JNI_C_INCLUDES = src
+
+WAYLAND_JNI_CFLAGS = -Wall
+

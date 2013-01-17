@@ -29,7 +29,8 @@ include $(LOCAL_PATH)/files.mk
 include $(CLEAR_VARS)
 
 LOCAL_MODULE 			:= libwayland-java-server
-LOCAL_CFLAGS			:= -I$(LOCAL_PATH)/src
+LOCAL_CFLAGS			:= $(WAYLAND_JNI_CFLAGS)
+LOCAL_C_INCLUDES		:= $(foreach file, $(WAYLAND_JNI_C_INCLUDES), $(LOCAL_PATH)/$(file))
 LOCAL_SRC_FILES 		:= $(foreach file, $(WAYLAND_JNI_SERVER_SRC), $(LOCAL_PATH)/$(file))
 LOCAL_LDLIBS 			:= -llog
 LOCAL_STATIC_LIBRARIES	:= libwayland-server
