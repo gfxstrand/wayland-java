@@ -26,9 +26,11 @@
 
 #include <stdint.h>
 
+#ifdef ANDROID
 #include <android/log.h>
 
 #define LOG_DEBUG(...) __android_log_print(ANDROID_LOG_DEBUG, __FILE__, __VA_ARGS__)
+#endif
 
 #include "wayland-util.h"
 
