@@ -21,25 +21,17 @@ TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE
 OF THIS SOFTWARE.
 -->
 <project name="wayland-java-custom" default="help">
-    <property name="protocol.namespace"
-            value="org.freedesktop.wayland.protocol" />
-    <property name="protocol.filename"
-            value="jni/external/wayland/protocol/wayland.xml" />
-
     <target name="-pre-build">
-        <ant dir="scanner" />
-        <taskdef name="scan-protocols" classname="Scanner"
-                classpath="scanner/WaylandProtocolScanner.jar" />
-        <scan-protocols src="${protocol.filename}"
-                dest="src" type="java" component="server"
-                javapackage="${protocol.namespace}" />
-        <scan-protocols src="${protocol.filename}"
-                dest="jni/src/server/protocol.c" type="c" component="server"
-                javapackage="${protocol.namespace}" />
-        <exec executable="ndk-build" failonerror="true"/>
+        <ant dir="../" target="protocol" />
+        <exec executable="ndk-build" failonerror="true">
+            <env key="APP_BUILD_SCRIPT" value="../jni/Android.mk" />
+            <arg value="-e" />
+        </exec>
     </target>
     <target name="-pre-clean">
         <exec executable="ndk-build" failonerror="true">
+            <env key="APP_BUILD_SCRIPT" value="../jni/Android.mk" />
+            <arg value="-e" />
             <arg value="clean" />
         </exec>
         <delete dir="${source.dir}/org/freedesktop/wayland/protocol" />
