@@ -27,11 +27,6 @@
 struct {
     jclass class;
     jfieldID display_ptr;
-
-    struct {
-        jclass class;
-        jmethodID init_long;
-    } Global;
 } Display;
 
 struct wl_display * wl_jni_display_from_java(JNIEnv * env, jobject jdisplay)
@@ -100,60 +95,34 @@ Java_org_freedesktop_wayland_server_Display_flushClients(JNIEnv * env,
 }
 
 JNIEXPORT void JNICALL
-Java_org_freedesktop_wayland_server_Display_doAddGlobal(JNIEnv * env,
+Java_org_freedesktop_wayland_server_Display_addGlobal(JNIEnv * env,
         jobject jdisplay, jobject jglobal)
 {
-    jobject jinterface, self_ref;
     struct wl_display * display;
-    struct wl_interface * interface;
-    struct wl_global * global;
-
-    jinterface = wl_jni_global_get_interface(env, jglobal);
-    if ((*env)->ExceptionCheck(env) == JNI_TRUE)
-        return;
 
     display = wl_jni_display_from_java(env, jdisplay);
-    interface = wl_jni_interface_from_java(env, jinterface);
-    if ((*env)->ExceptionCheck(env) == JNI_TRUE)
-        return;
+    if ((*env)->ExceptionCheck(env))
+        return /* Exception Thrown */
 
-    self_ref = (*env)->NewWeakGlobalRef(env, jglobal);
-    if ((*env)->ExceptionCheck(env) == JNI_TRUE)
-        return;
-
-    global = wl_display_add_global(display, interface, self_ref,
-            &wl_jni_global_bind_func);
-    if (global == NULL) {
-        (*env)->DeleteWeakGlobalRef(env, self_ref);
-        return;
-    }
-
-    wl_jni_global_set_data(env, jglobal, self_ref, global);
-    if ((*env)->ExceptionCheck(env) == JNI_TRUE) {
-        wl_display_remove_global(display, global);
-        (*env)->DeleteWeakGlobalRef(env, self_ref);
-        return;
-    }
+    wl_jni_global_add_to_display(env, jglobal, display);
 }
 
 JNIEXPORT void JNICALL
-Java_org_freedesktop_wayland_server_Display_doRemoveGlobal(JNIEnv * env,
+Java_org_freedesktop_wayland_server_Display_removeGlobal(JNIEnv * env,
         jobject jdisplay, jobject jglobal)
 {
-    struct wl_global * global;
     struct wl_display * display;
-    jobject self_ref;
-
-    if (jglobal == NULL)
-        return;
 
     display = wl_jni_display_from_java(env, jdisplay);
+    if ((*env)->ExceptionCheck(env))
+        return; /* Exception Thrown */
 
-    global = wl_jni_global_from_java(env, jglobal);
+    if ((*env)->IsSameObject(env, jglobal, NULL)) {
+        wl_jni_throw_NullPointerException(env, NULL);
+        return; /* Exception Thrown */
+    }
 
-    wl_display_remove_global(display, global);
-
-    wl_jni_global_release(env, jglobal);
+    wl_jni_global_remove_from_display(env, jglobal, display);
 }
 
 JNIEXPORT jint JNICALL

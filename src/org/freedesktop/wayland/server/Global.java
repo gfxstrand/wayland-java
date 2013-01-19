@@ -23,15 +23,13 @@ package org.freedesktop.wayland.server;
 
 import org.freedesktop.wayland.Interface;
 
-public class Global
+public class Global extends NativeObjectWrapper
 {
     public static interface BindHandler
     {
         public abstract void bindClient(Client client, int version, int id);
     }
 
-    private long global_ptr;
-    private long self_ref;
     private Interface iface;
     private BindHandler handler;
 
@@ -42,19 +40,8 @@ public class Global
         if (handler == null)
             throw new NullPointerException("BindHandler cannot be null");
 
-        this.global_ptr = 0;
-        this.self_ref = 0;
         this.iface = iface;
         this.handler = handler;
-    }
-
-    private native void _destroy();
-
-    @Override
-    protected void finalize() throws Throwable
-    {
-        _destroy();
-        super.finalize();
     }
 
     private static native void initializeJNI();

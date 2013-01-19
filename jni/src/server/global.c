@@ -26,8 +26,6 @@
 
 struct {
     jclass class;
-    jfieldID global_ptr;
-    jfieldID self_ref;
     jfieldID iface;
     jfieldID handler;
 
@@ -40,37 +38,11 @@ struct {
 struct wl_global *
 wl_jni_global_from_java(JNIEnv * env, jobject jglobal)
 {
-    if (jglobal == NULL)
-        return NULL;
-
-    return (struct wl_global *)(intptr_t)
-            (*env)->GetLongField(env, jglobal, Global.global_ptr);
-}
-
-jobject
-wl_jni_global_get_interface(JNIEnv * env, jobject jglobal)
-{
-    return (*env)->GetObjectField(env, jglobal, Global.iface);
-}
-
-/**
- * Sets the native data for the global.  Note that the jglobal variable MUST be
- * a global reference. This global reference will be deleted by
- * wl_jni_global_release.  If wl_jni_global_set_data fails, the reference not
- * be deleted.
- */
-void
-wl_jni_global_set_data(JNIEnv * env, jobject jglobal, jobject self_ref,
-        struct wl_global * global)
-{
-    (*env)->SetLongField(env, jglobal, Global.self_ref,
-            (jlong)(intptr_t)self_ref);
-    (*env)->SetLongField(env, jglobal, Global.global_ptr,
-            (jlong)(intptr_t)global);
+    return (struct wl_global *)wl_jni_object_wrapper_get_data(env, jglobal);
 }
 
 // FIXME: This isn't exception-safe!!!
-void
+static void
 wl_jni_global_bind_func(struct wl_client * client, void * data,
         uint32_t version, uint32_t id)
 {
@@ -98,37 +70,65 @@ wl_jni_global_bind_func(struct wl_client * client, void * data,
 }
 
 void
-wl_jni_global_release(JNIEnv * env, jobject jglobal)
+wl_jni_global_add_to_display(JNIEnv *env, jobject jglobal,
+        struct wl_display *display)
 {
-    jobject self_ref;
+    struct wl_jni_object_wrapper *wrapper;
+    struct wl_interface * interface;
+    struct wl_global * global;
+    jobject jinterface, self_ref;
 
-    self_ref = (jobject)(intptr_t)
-            (*env)->GetLongField(env, jglobal, Global.self_ref);
+    jinterface = (*env)->GetObjectField(env, jglobal, Global.iface);
+    if ((*env)->ExceptionCheck(env))
+        return; /* Exception Thrown */
 
-    (*env)->DeleteWeakGlobalRef(env, self_ref);
+    interface = wl_jni_interface_from_java(env, jinterface);
+    if ((*env)->ExceptionCheck(env))
+        return; /* Exception Thrown */
 
-    (*env)->SetLongField(env, jglobal, Global.global_ptr, 0);
-    (*env)->SetLongField(env, jglobal, Global.self_ref, 0);
+    self_ref = (*env)->NewGlobalRef(env, jglobal);
+    if ((*env)->ExceptionCheck(env))
+        return; /* Exception Thrown */
+
+    global = wl_display_add_global(display, interface, self_ref,
+            &wl_jni_global_bind_func);
+
+    wl_jni_object_wrapper_set_data(env, jglobal, global);
+    if ((*env)->ExceptionCheck(env)) {
+        wl_display_remove_global(display, global);
+        return; /* Exception Thrown */
+    }
+
+    /* The wrapper may not be available until after we set the data */
+    wrapper = wl_jni_object_wrapper_from_java(env, jglobal);
+    if (wrapper == NULL) {
+        wl_display_remove_global(display, global);
+        return; /* Exception Thrown */
+    }
+
+    wl_jni_object_wrapper_owned(env, jglobal, self_ref, JNI_TRUE);
+    if ((*env)->ExceptionCheck(env)) {
+        wl_display_remove_global(display, global);
+        return; /* Exception Thrown */
+    }
+
+    wl_display_add_destroy_listener(display, &wrapper->destroy_listener);
 }
 
-JNIEXPORT void JNICALL
-Java_org_freedesktop_wayland_server_Global__1destroy(JNIEnv * env,
-        jobject jglobal)
+void
+wl_jni_global_remove_from_display(JNIEnv *env, jobject jglobal,
+        struct wl_display *display)
 {
-    jobject self_ref;
+    struct wl_global *global;
 
-    self_ref = (jobject)(intptr_t)
-            (*env)->GetLongField(env, jglobal, Global.self_ref);
+    global = wl_jni_global_from_java(env, jglobal);
+    if ((*env)->ExceptionCheck(env))
+        return /* Exception Thrown */
 
-    if (self_ref == NULL)
-        return;
-
-    (*env)->DeleteWeakGlobalRef(env, self_ref);
-
-    (*env)->SetLongField(env, jglobal, Global.global_ptr, 0);
-    (*env)->SetLongField(env, jglobal, Global.self_ref, 0);
+    wl_display_remove_global(display, global);
+    wl_jni_object_wrapper_disowned(env, jglobal, JNI_TRUE);
 }
-        
+
 JNIEXPORT void JNICALL
 Java_org_freedesktop_wayland_server_Global_initializeJNI(JNIEnv * env,
         jclass cls)
@@ -138,16 +138,6 @@ Java_org_freedesktop_wayland_server_Global_initializeJNI(JNIEnv * env,
         wl_jni_throw_OutOfMemoryError(env, NULL);
         return;
     }
-
-    Global.global_ptr = (*env)->GetFieldID(env, Global.class,
-            "global_ptr", "J");
-    if (Global.global_ptr == NULL)
-        return; /* Exception Thrown */
-
-    Global.self_ref = (*env)->GetFieldID(env, Global.class,
-            "self_ref", "J");
-    if (Global.self_ref == NULL)
-        return; /* Exception Thrown */
 
     Global.iface = (*env)->GetFieldID(env, Global.class,
             "iface", "Lorg/freedesktop/wayland/Interface;");
