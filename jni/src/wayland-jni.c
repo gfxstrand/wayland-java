@@ -248,6 +248,18 @@ wl_jni_throw_IllegalArgumentException(JNIEnv * env, const char * message)
 }
 
 void
+wl_jni_throw_by_name(JNIEnv * env, const char * name, const char * message)
+{
+    jclass cls;
+
+    cls = (*env)->FindClass(env, name);
+    if (cls == NULL)
+        return /* Exception Thrown */
+
+    (*env)->ThrowNew(env, cls, message);
+}
+
+void
 wl_jni_throw_from_errno(JNIEnv * env, int err)
 {
     switch (err) {
