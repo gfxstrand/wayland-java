@@ -28,7 +28,7 @@ JNI_CFLAGS := -I/lib/jvm/java/include -I/lib/jvm/java/include/linux
 WAYLAND_CFLAGS := $(shell pkg-config --cflags wayland-server)
 WAYLAND_SERVER_LDFLAGS := $(shell pkg-config --libs wayland-server)
 
-CFLAGS := -fPIC $(WAYLAND_JNI_CFLAGS) $(WAYLAND_CFLAGS) $(JNI_CFLAGS)
+CFLAGS := -g -fPIC $(WAYLAND_JNI_CFLAGS) $(WAYLAND_CFLAGS) $(JNI_CFLAGS)
 CFLAGS += $(foreach file, $(WAYLAND_JNI_C_INCLUDES), -I$(file))
 
 SERVER_OBJECTS := $(foreach file, $(WAYLAND_JNI_SERVER_SRC), \
@@ -39,7 +39,7 @@ $(OBJECT_DIR)%.o: src/%.c
 	gcc $(CFLAGS) -c $< -o $@
 
 $(BUILD_DIR)/libwayland-java-server.so: $(SERVER_OBJECTS)
-	gcc -shared -o $@ $^
+	gcc -shared -o $@ $^ $(WAYLAND_SERVER_LDFLAGS)
 
 .PHONY: clean
 clean:

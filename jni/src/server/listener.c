@@ -68,6 +68,7 @@ listener_notify_func(struct wl_listener * listener, void * data)
     /* TODO: Do something with the data parameter? */
     (*env)->CallVoidMethod(env, jni_listener->self_ref, Listener.onNotify);
     if ((*env)->ExceptionCheck(env) == JNI_TRUE) {
+        (*env)->ExceptionDescribe(env);
         /* TODO */
     }
 }
@@ -78,13 +79,14 @@ listener_destroy_func(struct wl_listener * listener, void * data)
     struct wl_jni_listener * jni_listener;
     JNIEnv * env;
 
-    jni_listener = wl_container_of(listener, jni_listener, listener);
+    jni_listener = wl_container_of(listener, jni_listener, destroy_listener);
 
     env = wl_jni_get_env();
 
     Java_org_freedesktop_wayland_server_Listener_detach(
             env, jni_listener->self_ref);
     if ((*env)->ExceptionCheck(env) == JNI_TRUE) {
+        (*env)->ExceptionDescribe(env);
         /* TODO */
     }
 }
@@ -103,7 +105,8 @@ Java_org_freedesktop_wayland_server_Listener__1create(JNIEnv * env,
 
     memset(jni_listener, 0, sizeof(struct wl_jni_listener));
 
-    // TODO: Set callbacks
+    jni_listener->listener.notify = &listener_notify_func;
+    jni_listener->destroy_listener.notify = &listener_destroy_func;
 
     (*env)->SetLongField(env, jlistener, Listener.listener_ptr,
             (jlong)(intptr_t)jni_listener);
