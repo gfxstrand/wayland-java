@@ -19,6 +19,7 @@
  * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE
  * OF THIS SOFTWARE.
  */
+#include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
 
@@ -257,6 +258,7 @@ Java_org_freedesktop_wayland_server_Resource_addDestroyListener(JNIEnv * env,
 
     wl_signal_add(&resource->destroy_signal, &jni_listener->listener);
     wl_signal_add(&resource->destroy_signal, &jni_listener->destroy_listener);
+    wl_jni_listener_added_to_signal(env, jlistener);
 }
 
 JNIEXPORT void JNICALL
@@ -265,8 +267,16 @@ Java_org_freedesktop_wayland_server_Resource_destroy(JNIEnv * env,
 {
     struct wl_resource * resource = wl_jni_resource_from_java(env, jresource);
 
-    if (resource)
+    if (resource == NULL)
+        return;
+
+    if (resource->client) {
+        /* This only works if it has been added to a client */
         wl_resource_destroy(resource);
+    } else {
+        /* In this case we clean up ourselves */
+        wl_signal_emit(&resource->destroy_signal, resource);
+    }
 }
 
 static void
