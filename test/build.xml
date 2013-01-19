@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+Copyright © 2012-2013 Jason Ekstrand.
+ 
+Permission to use, copy, modify, distribute, and sell this software and its
+documentation for any purpose is hereby granted without fee, provided that
+the above copyright notice appear in all copies and that both that copyright
+notice and this permission notice appear in supporting documentation, and
+that the name of the copyright holders not be used in advertising or
+publicity pertaining to distribution of the software without specific,
+written prior permission.  The copyright holders make no representations
+about the suitability of this software for any purpose.  It is provided "as
+is" without express or implied warranty.
+
+THE COPYRIGHT HOLDERS DISCLAIM ALL WARRANTIES WITH REGARD TO THIS SOFTWARE,
+INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS, IN NO
+EVENT SHALL THE COPYRIGHT HOLDERS BE LIABLE FOR ANY SPECIAL, INDIRECT OR
+CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE,
+DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
+TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE
+OF THIS SOFTWARE.
+-->
+<project name="wayland-java-test" default="build">
+    <property name="source.dir" value="src" />
+    <property name="classes.dir" value="classes" />
+    <property name="jni.dir" value="jni" />
+
+    <path id="test.classpath">
+        <fileset dir="/usr/share/java">
+            <include name="junit.jar" />
+        </fileset>
+
+        <pathelement path="${classes.dir}" />
+        <pathelement path="../wayland-java.jar" />
+    </path>
+
+    <target name="jni">
+        <exec executable="make" dir="${jni.dir}" failonerror="true" />
+    </target>
+
+    <target name="build">
+        <mkdir dir="${classes.dir}" />
+        <javac srcdir="${source.dir}" destdir="${classes.dir}"
+                includeantruntime="false">
+            <classpath refid="test.classpath" />
+        </javac>
+    </target>
+
+    <target name="test" depends="build">
+        <junit fork="yes" >
+            <sysproperty key="java.library.path" value="../build"/>
+            <classpath refid="test.classpath" />
+            <formatter type="brief" usefile="false" />
+            <test name="org.freedesktop.wayland.server.DisplayTest" />
+            <test name="org.freedesktop.wayland.server.ResourceTest" />
+        </junit>
+    </target>
+
+    <target name="clean">
+        <delete dir="${classes.dir}" />
+        <ant dir="scanner" target="clean" />
+    </target>
+</project>
+
