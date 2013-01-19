@@ -26,6 +26,27 @@
 
 #include "wayland-server.h"
 
+struct wl_jni_object_wrapper {
+    void *data;
+    struct wl_listener destroy_listener;
+    jboolean destroyed_by_owner;
+    jobject self_ref;
+};
+
+struct wl_jni_object_wrapper * wl_jni_object_wrapper_from_java(JNIEnv *env,
+        jobject jwrapper);
+void * wl_jni_object_wrapper_get_data(JNIEnv *env, jobject wrapper);
+jobject wl_jni_object_wrapper_get_java_from_data(JNIEnv *env, void *data);
+
+void wl_jni_object_wrapper_set_data(JNIEnv *env, jobject wrapper, void *data);
+
+/* The global_ref reference must be a global reference to the same
+ * NativeObjectWrapper object as wrapper */
+void wl_jni_object_wrapper_owned(JNIEnv *env, jobject wrapper,
+        jobject global_ref, jboolean destroyed_by_owner);
+void wl_jni_object_wrapper_disowned(JNIEnv *env, jobject wrapper,
+        jboolean destroy);
+
 struct wl_client * wl_jni_client_from_java(JNIEnv * env, jobject client);
 jobject wl_jni_client_to_java(JNIEnv * env, struct wl_client * client);
 

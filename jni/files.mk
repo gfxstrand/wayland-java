@@ -25,6 +25,7 @@ WAYLAND_JNI_UTIL_SRC := \
 	src/wayland-jni.c
 
 WAYLAND_JNI_SERVER_SRC := $(WAYLAND_JNI_UTIL_SRC) \
+	src/server/native_object_wrapper.c \
 	src/server/display.c \
 	src/server/global.c \
 	src/server/client.c \
