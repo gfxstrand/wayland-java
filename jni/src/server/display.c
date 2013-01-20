@@ -41,11 +41,40 @@ jobject wl_jni_display_to_java(JNIEnv * env, struct wl_display * display)
 }
 
 JNIEXPORT jobject JNICALL
-Java_org_freedesktop_wayland_server_Display_getEventLoop(JNIEnv * env,
+Java_org_freedesktop_wayland_server_Display_getEventLoop(JNIEnv *env,
         jobject jdisplay)
 {
-    struct wl_display * display = wl_jni_display_from_java(env, jdisplay);
-    return wl_jni_event_loop_to_java(env, wl_display_get_event_loop(display));
+    struct wl_display *display;
+    struct wl_event_loop *loop;
+    struct wl_jni_object_wrapper *wrapper;
+    jobject jloop;
+    
+    display = wl_jni_display_from_java(env, jdisplay);
+    if ((*env)->ExceptionCheck(env))
+        return NULL;
+
+    loop = wl_display_get_event_loop(display);
+    jloop = wl_jni_event_loop_to_java(env, loop);
+
+    if (jloop == NULL) {
+        jloop = wl_jni_event_loop_create(env, loop);
+        if (jloop == NULL)
+            return NULL; /* Exception Thrown */
+
+        wrapper = wl_jni_object_wrapper_from_java(env, jloop);
+        if (wrapper == NULL)
+            return NULL; /* Exception Thrown */
+
+        wl_jni_object_wrapper_owned(env, jloop, NULL, JNI_TRUE);
+        if ((*env)->ExceptionCheck(env))
+            return NULL; /* Exception Thrown */
+
+        wl_event_loop_add_destroy_listener(loop, &wrapper->destroy_listener);
+
+        return jloop;
+    } else {
+        return jloop;
+    }
 }
 
 JNIEXPORT jint JNICALL

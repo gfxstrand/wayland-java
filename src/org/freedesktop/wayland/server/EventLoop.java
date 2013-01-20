@@ -21,9 +21,8 @@
  */
 package org.freedesktop.wayland.server;
 
-public class EventLoop
+public class EventLoop extends NativeObjectWrapper
 {
-
     public static final int EVENT_READABLE = 0x01;
     public static final int EVENT_WRITABLE = 0x02;
     public static final int EVENT_HANGUP   = 0x04;
@@ -31,11 +30,13 @@ public class EventLoop
     
     public static class EventSource
     {
-        private long event_src_ptr;
+        private long source_ptr;
+        private long handler_ptr;
         
-        private EventSource(long event_src_ptr)
+        private EventSource(long source_ptr, long handler_ptr)
         {
-            this.event_src_ptr = event_src_ptr;
+            this.source_ptr = source_ptr;
+            this.handler_ptr = handler_ptr;
         }
     }
 
@@ -58,8 +59,6 @@ public class EventLoop
     {
         public abstract void handleIdle();
     }
-
-    private long event_loop_ptr;
 
     private EventLoop(long native_ptr)
     {

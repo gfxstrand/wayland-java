@@ -28,15 +28,14 @@
 
 struct {
     jclass class;
-    jfieldID event_loop_ptr;
-
     jmethodID init_long;
 
     struct {
         jclass class;
-        jfieldID event_src_ptr;
+        jfieldID source_ptr;
+        jfieldID handler_ptr;
 
-        jmethodID init_long;
+        jmethodID init_long_long;
     } EventSource;
 
     struct {
@@ -62,117 +61,70 @@ struct {
 
 static void ensure_event_loop_object_cache(JNIEnv * env, jclass cls);
 
-struct event_loop_data {
-    struct wl_event_loop * event_loop;
-    struct wl_list event_handlers;
-};
-
 struct event_handler {
     jobject jhandler;
     jmethodID mid;
-    struct wl_list link;
+    struct wl_listener destroy_listener;
 };
-
-static struct event_loop_data *
-event_loop_data_create(JNIEnv * env, struct wl_event_loop * event_loop)
-{
-    struct event_loop_data * loop_data = malloc(sizeof(struct event_loop_data));
-    if (loop_data == NULL) {
-        wl_jni_throw_OutOfMemoryError(env, NULL);
-        return NULL;
-    }
-
-    loop_data->event_loop = event_loop;
-    wl_list_init(&loop_data->event_handlers);
-
-    return loop_data;
-}
-
-static void
-event_loop_data_destroy(JNIEnv * env, struct event_loop_data * loop_data)
-{
-    // Clean up our handler references
-    struct event_handler * handler, * tmp;
-
-    wl_list_for_each_safe(handler, tmp, &loop_data->event_handlers, link) {
-        (*env)->DeleteGlobalRef(env, handler->jhandler);
-        wl_list_remove(&handler->link);
-        free(handler);
-    }
-
-    // Finally, we delete the loop data structure
-    free(loop_data);
-}
-
-static struct event_handler *
-event_loop_data_add_event_handler(JNIEnv * env,
-        struct event_loop_data * loop_data, jobject jhandler, jmethodID method)
-{
-    struct event_handler * handler = malloc(sizeof(struct event_handler));
-    if (handler == NULL) {
-        wl_jni_throw_OutOfMemoryError(env, NULL);
-        return NULL;
-    }
-
-    handler->jhandler = (*env)->NewGlobalRef(env, jhandler);
-    if (handler->jhandler == NULL) {
-        free(handler);
-        return NULL; /* Exception Thrown */
-    }
-
-    handler->mid = method;
-    wl_list_insert(&loop_data->event_handlers, &handler->link);
-
-    return handler;
-}
-
-void
-event_loop_data_remove_event_handler(JNIEnv * env,
-        struct event_handler * handler)
-{
-    wl_list_remove(&handler->link);
-    (*env)->DeleteGlobalRef(env, handler->jhandler);
-    free(handler);
-}
-
-static jobject
-event_source_create(JNIEnv * env, struct wl_event_source * wl_event_source)
-{
-    return (*env)->NewObject(env, EventLoop.EventSource.class,
-            EventLoop.EventSource.init_long, (jlong)(intptr_t)wl_event_source);
-}
-
-static struct event_loop_data *
-event_loop_data_from_java(JNIEnv * env, jobject jevent_loop)
-{
-    return (struct event_loop_data *)(intptr_t)
-            (*env)->GetLongField(env, jevent_loop, EventLoop.event_loop_ptr);
-}
 
 struct wl_event_loop *
 wl_jni_event_loop_from_java(JNIEnv * env, jobject jevent_loop)
 {
-    struct event_loop_data * loop_data =
-            event_loop_data_from_java(env, jevent_loop);
-    return loop_data->event_loop;
+    return (struct wl_event_loop *)
+            wl_jni_object_wrapper_get_data(env, jevent_loop);
 }
 
 jobject
 wl_jni_event_loop_to_java(JNIEnv * env, struct wl_event_loop * event_loop)
 {
-    jobject jevent_loop;
-    
-    jevent_loop = wl_jni_find_reference(env, event_loop);
-    if (jevent_loop != NULL)
-        return jevent_loop;
+    return wl_jni_object_wrapper_get_java_from_data(env, event_loop);
+}
 
-    /* Looks like we have to create it */
+jobject
+wl_jni_event_loop_create(JNIEnv * env, struct wl_event_loop *loop)
+{
     ensure_event_loop_object_cache(env, NULL);
-    if ((*env)->ExceptionCheck(env) == JNI_TRUE)
-        return NULL; /* Exception Thrown */
 
     return (*env)->NewObject(env, EventLoop.class, EventLoop.init_long,
-            (jlong)(intptr_t)event_loop);
+            (jlong)(intptr_t)loop);
+}
+
+static void
+event_handler_destroy(JNIEnv *env, struct event_handler *handler)
+{
+    (*env)->DeleteGlobalRef(env, handler->jhandler);
+    wl_list_remove(&handler->destroy_listener.link);
+    free(handler);
+}
+
+static void
+event_handler_destroy_func(struct wl_listener *listener, void *data)
+{
+    struct event_handler *handler;
+    JNIEnv *env;
+
+    env = wl_jni_get_env();
+    handler = wl_container_of(listener, handler, destroy_listener);
+
+    event_handler_destroy(env, handler);
+}
+
+static jobject
+create_source_wrapper(JNIEnv *env, struct wl_event_loop *loop,
+        struct wl_event_source *source, struct event_handler *handler,
+        jobject jhandler, jmethodID method)
+{
+    handler->jhandler = (*env)->NewGlobalRef(env, jhandler);
+    if (handler->jhandler == NULL)
+        return NULL; /* Exception Thrown */
+
+    handler->mid = method;
+    handler->destroy_listener.notify = event_handler_destroy_func;
+    wl_event_loop_add_destroy_listener(loop, &handler->destroy_listener);
+
+    return (*env)->NewObject(env, EventLoop.EventSource.class,
+            EventLoop.EventSource.init_long_long,
+            (jlong)(intptr_t)source, (jlong)(intptr_t)handler);
 }
 
 static int
@@ -194,11 +146,12 @@ JNIEXPORT jobject JNICALL
 Java_org_freedesktop_wayland_server_EventLoop_addFileDescriptor(JNIEnv * env,
         jobject jevent_loop, jint fd, jint mask, jobject jhandler)
 {
-    struct event_loop_data * loop_data;
-    struct event_handler * event_handler;
-    struct wl_event_source * event_source;
+    struct wl_event_loop *loop;
+    struct event_handler *handler;
+    struct wl_event_source *source;
+    jobject jsource;
     
-    loop_data = event_loop_data_from_java(env, jevent_loop);
+    loop = wl_jni_event_loop_from_java(env, jevent_loop);
     if ((*env)->ExceptionCheck(env) == JNI_TRUE)
         return NULL;
 
@@ -207,28 +160,31 @@ Java_org_freedesktop_wayland_server_EventLoop_addFileDescriptor(JNIEnv * env,
                 "File descriptor is negative");
         return NULL; /* Exception Thrown */
     }
+    
+    handler = malloc(sizeof(struct event_handler));
+    if (handler == NULL) {
+        wl_jni_throw_OutOfMemoryError(env, NULL);
+        return NULL;
+    }
 
-    event_handler = event_loop_data_add_event_handler(env, loop_data, jhandler,
-            EventLoop.FileDescriptorEventHandler.handleFileDescriptorEvent);
-    if (event_handler == NULL)
-        return NULL; /* Exception Thrown */
-
-    event_source = wl_event_loop_add_fd(loop_data->event_loop, fd,
-            (uint32_t)mask, handle_event_loop_fd_call, event_handler);
-    if (event_source == NULL) {
-        event_loop_data_remove_event_handler(env, event_handler);
+    source = wl_event_loop_add_fd(loop, fd, (uint32_t)mask,
+            handle_event_loop_fd_call, handler);
+    if (source == NULL) {
+        free(handler);
         wl_jni_throw_from_errno(env, errno);
         return NULL; /* Exception Thrown */
     }
+    
+    jsource = create_source_wrapper(env, loop, source, handler, jhandler,
+            EventLoop.FileDescriptorEventHandler.handleFileDescriptorEvent);
 
-    jobject jevent_source = event_source_create(env, event_source);
-    if (jevent_source == NULL) {
-        wl_event_source_remove(event_source);
-        event_loop_data_remove_event_handler(env, event_handler);
+    if (jsource == NULL) {
+        free(handler);
+        wl_event_source_remove(source);
         return NULL; /* Exception Thrown */
     }
 
-    return jevent_source;
+    return jsource;
 }
 
 static int
@@ -249,31 +205,39 @@ JNIEXPORT jobject JNICALL
 Java_org_freedesktop_wayland_server_EventLoop_addTier(JNIEnv * env,
         jobject jevent_loop, jobject jhandler)
 {
-    struct event_loop_data * loop_data =
-            event_loop_data_from_java(env, jevent_loop);
+    struct wl_event_loop *loop;
+    struct event_handler *handler;
+    struct wl_event_source *source;
+    jobject jsource;
+    
+    loop = wl_jni_event_loop_from_java(env, jevent_loop);
+    if ((*env)->ExceptionCheck(env) == JNI_TRUE)
+        return NULL;
+    
+    handler = malloc(sizeof(struct event_handler));
+    if (handler == NULL) {
+        wl_jni_throw_OutOfMemoryError(env, NULL);
+        return NULL;
+    }
 
-    struct event_handler * event_handler =
-            event_loop_data_add_event_handler(env, loop_data, jhandler,
+    source = wl_event_loop_add_timer(loop,
+                handle_event_loop_timer_call, handler);
+    if (source == NULL) {
+        free(handler);
+        wl_jni_throw_from_errno(env, errno);
+        return NULL; /* Exception Thrown */
+    }
+    
+    jsource = create_source_wrapper(env, loop, source, handler, jhandler,
             EventLoop.TimerEventHandler.handleTimerEvent);
-    if (event_handler == NULL)
-        return NULL; /* Exception Thrown */
 
-    struct wl_event_source * event_source =
-            wl_event_loop_add_timer(loop_data->event_loop,
-                handle_event_loop_timer_call, event_handler);
-    if (event_source == NULL) {
-        event_loop_data_remove_event_handler(env, event_handler);
+    if (jsource == NULL) {
+        free(handler);
+        wl_event_source_remove(source);
         return NULL; /* Exception Thrown */
     }
 
-    jobject jevent_source = event_source_create(env, event_source);
-    if (jevent_source == NULL) {
-        wl_event_source_remove(event_source);
-        event_loop_data_remove_event_handler(env, event_handler);
-        return NULL; /* Exception Thrown */
-    }
-
-    return jevent_source;
+    return jsource;
 }
 
 static int
@@ -295,31 +259,39 @@ JNIEXPORT jobject JNICALL
 Java_org_freedesktop_wayland_server_EventLoop_addSignal(JNIEnv * env,
         jobject jevent_loop, jint signal_number, jobject jhandler)
 {
-    struct event_loop_data * loop_data =
-            event_loop_data_from_java(env, jevent_loop);
+    struct wl_event_loop *loop;
+    struct event_handler *handler;
+    struct wl_event_source *source;
+    jobject jsource;
+    
+    loop = wl_jni_event_loop_from_java(env, jevent_loop);
+    if ((*env)->ExceptionCheck(env) == JNI_TRUE)
+        return NULL;
+    
+    handler = malloc(sizeof(struct event_handler));
+    if (handler == NULL) {
+        wl_jni_throw_OutOfMemoryError(env, NULL);
+        return NULL;
+    }
 
-    struct event_handler * event_handler =
-            event_loop_data_add_event_handler(env, loop_data, jhandler,
+    source = wl_event_loop_add_signal(loop, signal_number,
+                handle_event_loop_signal_call, handler);
+    if (source == NULL) {
+        free(handler);
+        wl_jni_throw_from_errno(env, errno);
+        return NULL; /* Exception Thrown */
+    }
+    
+    jsource = create_source_wrapper(env, loop, source, handler, jhandler,
             EventLoop.SignalEventHandler.handleSignalEvent);
-    if (event_handler == NULL)
-        return NULL; /* Exception Thrown */
 
-    struct wl_event_source * event_source =
-            wl_event_loop_add_signal(loop_data->event_loop, signal_number,
-                handle_event_loop_signal_call, event_handler);
-    if (event_source == NULL) {
-        event_loop_data_remove_event_handler(env, event_handler);
+    if (jsource == NULL) {
+        free(handler);
+        wl_event_source_remove(source);
         return NULL; /* Exception Thrown */
     }
 
-    jobject jevent_source = event_source_create(env, event_source);
-    if (jevent_source == NULL) {
-        wl_event_source_remove(event_source);
-        event_loop_data_remove_event_handler(env, event_handler);
-        return NULL; /* Exception Thrown */
-    }
-
-    return jevent_source;
+    return jsource;
 }
 
 static void
@@ -331,7 +303,7 @@ handle_event_loop_idle_call(void * data)
 
     (*env)->CallVoidMethod(env, handler->jhandler, handler->mid);
 
-    event_loop_data_remove_event_handler(env, handler);
+    event_handler_destroy(env, handler);
 
     // TODO: Handle Exceptions
 }
@@ -340,31 +312,38 @@ JNIEXPORT jobject JNICALL
 Java_org_freedesktop_wayland_server_EventLoop_addIdle(JNIEnv * env,
         jobject jevent_loop, jobject jhandler)
 {
-    struct event_loop_data * loop_data =
-            event_loop_data_from_java(env, jevent_loop);
+    struct wl_event_loop *loop;
+    struct event_handler *handler;
+    struct wl_event_source *source;
+    jobject jsource;
+    
+    loop = wl_jni_event_loop_from_java(env, jevent_loop);
+    if ((*env)->ExceptionCheck(env) == JNI_TRUE)
+        return NULL;
+    
+    handler = malloc(sizeof(struct event_handler));
+    if (handler == NULL) {
+        wl_jni_throw_OutOfMemoryError(env, NULL);
+        return NULL;
+    }
 
-    struct event_handler * event_handler =
-            event_loop_data_add_event_handler(env, loop_data, jhandler,
+    source = wl_event_loop_add_idle(loop, handle_event_loop_idle_call, handler);
+    if (source == NULL) {
+        free(handler);
+        wl_jni_throw_from_errno(env, errno);
+        return NULL; /* Exception Thrown */
+    }
+    
+    jsource = create_source_wrapper(env, loop, source, handler, jhandler,
             EventLoop.IdleHandler.handleIdle);
-    if (event_handler == NULL)
-        return NULL; /* Exception Thrown */
 
-    struct wl_event_source * event_source =
-            wl_event_loop_add_idle(loop_data->event_loop,
-                handle_event_loop_idle_call, event_handler);
-    if (event_source == NULL) {
-        event_loop_data_remove_event_handler(env, event_handler);
+    if (jsource == NULL) {
+        free(handler);
+        wl_event_source_remove(source);
         return NULL; /* Exception Thrown */
     }
 
-    jobject jevent_source = event_source_create(env, event_source);
-    if (jevent_source == NULL) {
-        wl_event_source_remove(event_source);
-        event_loop_data_remove_event_handler(env, event_handler);
-        return NULL; /* Exception Thrown */
-    }
-
-    return jevent_source;
+    return jsource;
 }
 
 JNIEXPORT void JNICALL
@@ -403,35 +382,21 @@ Java_org_freedesktop_wayland_server_EventLoop__1create(JNIEnv * env,
         }
     }
 
-    wl_jni_register_weak_reference(env, event_loop, jevent_loop);
-    if ((*env)->ExceptionCheck(env) == JNI_TRUE)
-        return; /* Exception Thrown */
-
-    (*env)->SetLongField(env, jevent_loop, EventLoop.event_loop_ptr,
-            (jlong)(intptr_t)event_loop_data_create(env, event_loop));
+    wl_jni_object_wrapper_set_data(env, jevent_loop, event_loop);
 }
 
 JNIEXPORT void JNICALL
-Java_org_freedesktop_wayland_server_EventLoop__1destroy(JNIEnv * env,
-        jobject jevent_loop)
+Java_org_freedesktop_wayland_server_EventLoop__1destroy(JNIEnv *env,
+        jobject jloop)
 {
-    struct event_loop_data * loop_data =
-            event_loop_data_from_java(env, jevent_loop);
+    struct wl_event_loop *loop;
+    
+    loop = wl_jni_event_loop_from_java(env, jloop);
 
-    if (loop_data) {
-        jclass cls = (*env)->GetObjectClass(env, jevent_loop);
-        jfieldID fid = (*env)->GetFieldID(env, cls, "isWrapper", "Z");
-        jboolean is_wrapper = (*env)->GetBooleanField(env, jevent_loop, fid);
-        
-        if (is_wrapper == JNI_FALSE)
-            wl_event_loop_destroy(loop_data->event_loop);
+    if (loop == NULL)
+        return;
 
-        wl_jni_unregister_reference(env, loop_data->event_loop);
-
-        event_loop_data_destroy(env, loop_data);
-
-        (*env)->SetLongField(env, jevent_loop, EventLoop.event_loop_ptr, 0);
-    }
+    wl_event_loop_destroy(loop);
 }
 
 JNIEXPORT void JNICALL
@@ -440,11 +405,6 @@ Java_org_freedesktop_wayland_server_EventLoop_initializeJNI(JNIEnv * env,
 {
     EventLoop.class = (*env)->NewGlobalRef(env, cls);
     if (EventLoop.class == NULL)
-        return; /* Exception Thrown */
-
-    EventLoop.event_loop_ptr =
-            (*env)->GetFieldID(env, EventLoop.class, "event_loop_ptr", "J");
-    if (EventLoop.event_loop_ptr == NULL)
         return; /* Exception Thrown */
 
     EventLoop.init_long =
@@ -461,16 +421,22 @@ Java_org_freedesktop_wayland_server_EventLoop_initializeJNI(JNIEnv * env,
     if (EventLoop.EventSource.class == NULL)
         return; /* Exception Thrown */
 
-    EventLoop.EventSource.event_src_ptr =
+    EventLoop.EventSource.source_ptr =
             (*env)->GetFieldID(env, EventLoop.EventSource.class,
-                "event_src_ptr", "J");
-    if (EventLoop.EventSource.event_src_ptr == NULL)
+                "source_ptr", "J");
+    if (EventLoop.EventSource.source_ptr == NULL)
         return; /* Exception Thrown */
 
-    EventLoop.EventSource.init_long =
+    EventLoop.EventSource.handler_ptr =
+            (*env)->GetFieldID(env, EventLoop.EventSource.class,
+                "handler_ptr", "J");
+    if (EventLoop.EventSource.handler_ptr == NULL)
+        return; /* Exception Thrown */
+
+    EventLoop.EventSource.init_long_long =
             (*env)->GetMethodID(env, EventLoop.EventSource.class,
-                "<init>", "(J)V");
-    if (EventLoop.EventSource.init_long == NULL)
+                "<init>", "(JJ)V");
+    if (EventLoop.EventSource.init_long_long == NULL)
         return; /* Exception Thrown */
 
     cls = (*env)->FindClass(env, "org/freedesktop/wayland/server/"
