@@ -38,7 +38,8 @@ struct wl_jni_object_wrapper * wl_jni_object_wrapper_from_java(JNIEnv *env,
 void * wl_jni_object_wrapper_get_data(JNIEnv *env, jobject wrapper);
 jobject wl_jni_object_wrapper_get_java_from_data(JNIEnv *env, void *data);
 
-void wl_jni_object_wrapper_set_data(JNIEnv *env, jobject wrapper, void *data);
+struct wl_jni_object_wrapper * wl_jni_object_wrapper_set_data(JNIEnv *env,
+        jobject wrapper, void *data);
 
 /* The global_ref reference must be a global reference to the same
  * NativeObjectWrapper object as wrapper */

@@ -67,32 +67,32 @@ native_object_wrapper_destroy_notify(struct wl_listener *listener, void *data)
             wrapper->destroyed_by_owner);
 }
 
-void
+struct wl_jni_object_wrapper *
 wl_jni_object_wrapper_set_data(JNIEnv *env, jobject jwrapper, void *data)
 {
     struct wl_jni_object_wrapper *wrapper;
 
     wrapper = wl_jni_object_wrapper_from_java(env, jwrapper);
     if ((*env)->ExceptionCheck(env))
-        return; /* Exception Thrown */
+        return NULL; /* Exception Thrown */
 
     if (wrapper != NULL) {
         wl_jni_throw_by_name(env, "java/lang/IllegalStateException",
                 "NativeObjectWrapper: data already assigned");
-        return; /* Exception Thrown */
+        return NULL; /* Exception Thrown */
     }
 
     wrapper = malloc(sizeof(struct wl_jni_object_wrapper));
     if (wrapper == NULL) {
         wl_jni_throw_OutOfMemoryError(env, NULL);
-        return; /* Exception Thrown */
+        return NULL; /* Exception Thrown */
     }
     memset(wrapper, 0, sizeof(struct wl_jni_object_wrapper));
 
     wl_jni_register_weak_reference(env, data, jwrapper);
     if ((*env)->ExceptionCheck(env)) {
         free(wrapper);
-        return; /* Exception Thrown */
+        return NULL; /* Exception Thrown */
     }
 
     (*env)->SetLongField(env, jwrapper, NativeObjectWrapper.data_ptr,
@@ -100,11 +100,13 @@ wl_jni_object_wrapper_set_data(JNIEnv *env, jobject jwrapper, void *data)
     if ((*env)->ExceptionCheck(env)) {
         wl_jni_unregister_reference(env, data);
         free(wrapper);
-        return; /* Exception Thrown */
+        return NULL; /* Exception Thrown */
     }
 
     wrapper->data = data;
     wrapper->destroy_listener.notify = &native_object_wrapper_destroy_notify;
+
+    return wrapper;
 }
 
 void
