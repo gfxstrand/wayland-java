@@ -35,63 +35,22 @@ struct {
     jclass class;
     jmethodID init_long;
     jmethodID init_display_int;
-    jfieldID client_ptr;
 } Client;
 
 static void ensure_client_object_cache(JNIEnv * env, jclass cls);
 
-struct wl_jni_client {
-    struct wl_listener destroy_listener;
-    struct wl_client * client;
-};
-
 struct wl_client *
 wl_jni_client_from_java(JNIEnv * env, jobject jclient)
 {
-    struct wl_jni_client * jni_client;
-
-    if (jclient == NULL)
-        return NULL;
-
-    jni_client = (struct wl_jni_client *)(intptr_t)
-            (*env)->GetLongField(env, jclient, Client.client_ptr);
-    if (jni_client == NULL)
-        return NULL;
-
-    return jni_client->client;
-}
-
-static void
-client_destroy_listener_func(struct wl_listener * listener, void * data)
-{
-    JNIEnv * env;
-    struct wl_jni_client * jni_client;
-    jobject jclient;
-
-    env = wl_jni_get_env();
-
-    /* we can do a direct cast here */
-    jni_client = (struct wl_jni_client *)listener;
-
-    jclient = wl_jni_find_reference(env, jni_client->client);
-    if (jclient == NULL)
-        return;
-
-    /* Remove the global reference and replace it with a weak reference */
-    wl_jni_unregister_reference(env, jni_client->client);
-    wl_jni_register_weak_reference(env, jni_client->client, jclient);
-
-    (*env)->DeleteLocalRef(env, jclient);
+    return (struct wl_client *)wl_jni_object_wrapper_get_data(env, jclient);
 }
 
 jobject
 wl_jni_client_to_java(JNIEnv * env, struct wl_client * client)
 {
     jobject jclient;
-    jclass cls;
-    struct wl_jni_client * jni_client;
 
-    jclient = wl_jni_find_reference(env, client);
+    jclient = wl_jni_object_wrapper_get_java_from_data(env, client);
     if (jclient != NULL)
         return jclient;
     
@@ -102,31 +61,8 @@ wl_jni_client_to_java(JNIEnv * env, struct wl_client * client)
 
     ensure_client_object_cache(env, NULL);
 
-    jni_client = malloc(sizeof(struct wl_jni_client));
-    if (jni_client == NULL) {
-        wl_jni_throw_OutOfMemoryError(env, NULL);
-        return;
-    }
-
-    jclient = (*env)->NewObject(env, Client.class, Client.init_long,
-            (jlong)(intptr_t)jni_client);
-    if (jclient == NULL) {
-        free(jni_client);
-        return; /* Exception Thrown */
-    }
-
-    wl_jni_register_reference(env, client, jclient);
-    if ((*env)->ExceptionCheck(env) == JNI_TRUE) {
-        (*env)->DeleteLocalRef(env, jclient);
-        free(jni_client);
-        return; /* Exception Thrown */
-    }
-
-    jni_client->client = client;
-    jni_client->destroy_listener.notify = client_destroy_listener_func;
-    wl_client_add_destroy_listener(client, &jni_client->destroy_listener);
-
-    return jclient;
+    return (*env)->NewObject(env, Client.class, Client.init_long,
+            (jlong)(intptr_t)client);
 }
 
 JNIEXPORT jobject JNICALL
@@ -238,36 +174,66 @@ cleanup_arguments:
 }
 
 JNIEXPORT void JNICALL
-Java_org_freedesktop_wayland_server_Client_create(JNIEnv * env, jobject jclient,
-        jobject jdisplay, jint fd)
+Java_org_freedesktop_wayland_server_Client_setNative(JNIEnv *env,
+        jobject jclient, jlong client_ptr)
 {
-    struct wl_jni_client * jni_client;
-    struct wl_display * display;
+    struct wl_jni_object_wrapper *wrapper;
+    struct wl_client *client;
 
-    display = wl_jni_display_from_java(env, jdisplay);
-
-    jni_client = malloc(sizeof(struct wl_jni_client));
-    if (jni_client == NULL) {
-        wl_jni_throw_OutOfMemoryError(env, NULL);
+    client = (struct wl_client *)(intptr_t)client_ptr;
+    if (client_ptr == 0) {
+        wl_jni_throw_IllegalArgumentException(env, "client_ptr cannot be 0");
         return;
     }
 
-    jni_client->client = wl_client_create(display, fd);
-    if (jni_client == NULL)
-        wl_jni_throw_from_errno(env, errno);
+    wrapper = wl_jni_object_wrapper_set_data(env, jclient, client);
+    if (wrapper == NULL)
+        return; /* Exception Thrown */
 
-    (*env)->SetLongField(env, jclient, Client.client_ptr,
-            (jlong)(intptr_t)jni_client);
+    wl_jni_object_wrapper_owned(env, jclient, NULL, JNI_TRUE);
+    if ((*env)->ExceptionCheck(env))
+        return; /* Exception Thrown */
 
-    wl_jni_register_reference(env, jni_client->client, jclient);
-    if ((*env)->ExceptionCheck(env) == JNI_TRUE) {
-        free(jni_client);
+    wl_client_add_destroy_listener(client, &wrapper->destroy_listener);
+}
+
+JNIEXPORT void JNICALL
+Java_org_freedesktop_wayland_server_Client_create(JNIEnv * env, jobject jclient,
+        jobject jdisplay, jint fd)
+{
+    struct wl_client *client;
+    struct wl_display *display;
+    struct wl_jni_object_wrapper *wrapper;
+
+    display = wl_jni_display_from_java(env, jdisplay);
+    if ((*env)->ExceptionCheck(env))
+        return; /* Exception Thrown */
+
+    if (display == NULL) {
+        wl_jni_throw_NullPointerException(env, "Display cannot be null");
         return; /* Exception Thrown */
     }
 
-    jni_client->destroy_listener.notify = client_destroy_listener_func;
-    wl_client_add_destroy_listener(jni_client->client,
-            &jni_client->destroy_listener);
+    client = wl_client_create(display, fd);
+
+    if (client == NULL) {
+        wl_jni_throw_from_errno(env, errno);
+        return;
+    }
+
+    wrapper = wl_jni_object_wrapper_set_data(env, jclient, client);
+    if (wrapper == NULL) {
+        wl_client_destroy(client);
+        return;
+    }
+
+    wl_jni_object_wrapper_owned(env, jclient, NULL, JNI_TRUE);
+    if ((*env)->ExceptionCheck(env)) {
+        wl_client_destroy(client);
+        return;
+    }
+
+    wl_client_add_destroy_listener(client, &wrapper->destroy_listener);
 }
 
 JNIEXPORT void JNICALL
@@ -399,17 +365,15 @@ Java_org_freedesktop_wayland_server_Client_getDisplay(JNIEnv * env,
 }
 
 JNIEXPORT void JNICALL
-Java_org_freedesktop_wayland_server_Client_destroy(JNIEnv * env,
+Java_org_freedesktop_wayland_server_Client_destroy(JNIEnv *env,
         jobject jclient)
 {
-    struct wl_client * client = wl_jni_client_from_java(env, jclient);
-    if (client) {
+    struct wl_client *client;
+    
+    client = wl_jni_client_from_java(env, jclient);
+
+    if (client)
         wl_client_destroy(client);
-
-        wl_jni_unregister_reference(env, client);
-
-        (*env)->SetLongField(env, jclient, Client.client_ptr, 0);
-    }
 }
 
 JNIEXPORT void JNICALL
@@ -428,11 +392,6 @@ Java_org_freedesktop_wayland_server_Client_initializeJNI(JNIEnv * env,
     Client.init_display_int = (*env)->GetMethodID(env, Client.class,
             "<init>", "(Lorg/freedesktop/wayland/server/Display;I)V");
     if (Client.init_display_int == NULL)
-        return; /* Exception Thrown */
-
-    Client.client_ptr = (*env)->GetFieldID(env, Client.class,
-            "client_ptr", "J");
-    if (Client.client_ptr == NULL)
         return; /* Exception Thrown */
 }
 

@@ -25,13 +25,11 @@ import java.io.File;
 
 import org.freedesktop.wayland.Interface;
 
-public class Client
+public class Client extends NativeObjectWrapper
 {
-    private long client_ptr;
-
     private Client(long client_ptr)
     {
-        this.client_ptr = client_ptr;
+        setNative(client_ptr);
     }
 
     public Client(Display display, int fd)
@@ -42,6 +40,7 @@ public class Client
     public static native Client startClient(Display display, File executable,
             String[] args);
 
+    private native void setNative(long client_ptr);
     private native void create(Display display, int fd);
     public native void flush();
     public native int addResource(Resource resource);
@@ -54,7 +53,8 @@ public class Client
     @Override
     protected void finalize() throws Throwable
     {
-        destroy();
+        if (isValid())
+            destroy();
         super.finalize();
     }
 
