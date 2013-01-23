@@ -131,7 +131,7 @@ Java_org_freedesktop_wayland_server_Display_addGlobal(JNIEnv * env,
 
     display = wl_jni_display_from_java(env, jdisplay);
     if ((*env)->ExceptionCheck(env))
-        return /* Exception Thrown */
+        return; /* Exception Thrown */
 
     wl_jni_global_add_to_display(env, jglobal, display);
 }
