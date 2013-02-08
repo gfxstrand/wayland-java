@@ -142,7 +142,7 @@ class Argument
         case NEW_ID:
             return "int";
         case ARRAY:
-            return "byte[]";
+            return "java.nio.ByteBuffer";
         case FD:
             return "int";
         default:

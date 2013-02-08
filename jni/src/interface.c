@@ -20,8 +20,10 @@
  * OF THIS SOFTWARE.
  */
 #include "wayland-jni.h"
+#include "server/server-jni.h"
 
 #include <stdlib.h>
+#include <string.h>
 
 static struct {
     jclass class;
@@ -32,7 +34,6 @@ static struct {
     jfieldID requests;
     jfieldID events;
     jfieldID interface_ptr;
-    jfieldID implementation_ptr;
 
     struct {
         jclass class;
@@ -44,31 +45,41 @@ static struct {
     } Message;
 } Interface;
 
+struct wl_jni_interface
+{
+    struct wl_interface interface;
+    jmethodID *requests;
+    jmethodID *events;
+};
+
 struct wl_interface *
 wl_jni_interface_from_java(JNIEnv * env, jobject jinterface)
 {
+    struct wl_jni_interface *jni_interface;
+
     if (jinterface == NULL)
         return NULL;
 
-    return (struct wl_interface *)(intptr_t)(*env)->GetLongField(env,
-            jinterface, Interface.interface_ptr);
+    jni_interface = (struct wl_jni_interface *)(intptr_t)(*env)->GetLongField(
+            env, jinterface, Interface.interface_ptr);
+
+    return &jni_interface->interface;
 }
 
 void
 wl_jni_interface_init_object(JNIEnv * env, jobject jinterface,
         struct wl_object * obj)
 {
-    if (jinterface == NULL || obj == NULL)
+    if ((*env)->IsSameObject(env, jinterface, NULL) || obj == NULL)
         return;
 
-    obj->interface = (struct wl_interface *)(intptr_t)(*env)->GetLongField(env,
-            jinterface, Interface.interface_ptr);
-    obj->implementation = (void (**)(void))(intptr_t)(*env)->GetLongField(env,
-            jinterface, Interface.implementation_ptr);
+    struct wl_jni_interface *jni_interface;
+    jni_interface = (struct wl_jni_interface *)(intptr_t)(*env)->GetLongField(
+            env, jinterface, Interface.interface_ptr);
 
-    if (obj->implementation == NULL) {
-        /* Normally, we would set the java generic implementation here */
-    }
+    obj->interface = &jni_interface->interface;
+    /* TODO: Handle events too */
+    obj->implementation = jni_interface->requests;
 }
 
 static void
@@ -131,47 +142,118 @@ delete_name:
         free((void *)msg->name);
 }
 
+static void
+destroy_native_message(const struct wl_message * msg)
+{
+    free((void *)msg->name);
+    free((void *)msg->signature);
+    free((void *)msg->types);
+}
+
+static jmethodID
+get_java_method(JNIEnv * env, jobject jinterface, jobject jmsg,
+        const char *data_type)
+{
+    jobject jstr, cls;
+    char *name, *signature, *full_signature;
+    int len;
+    jmethodID mid;
+
+    mid = NULL;
+
+    jstr = (*env)->GetObjectField(env, jmsg, Interface.Message.name);
+    if ((*env)->ExceptionCheck(env))
+        return NULL;
+
+    name = wl_jni_string_to_default(env, jstr);
+    (*env)->DeleteLocalRef(env, jstr);
+    if ((*env)->ExceptionCheck(env))
+        return NULL;
+
+    jstr = (*env)->GetObjectField(env, jmsg, Interface.Message.javaSignature);
+    if ((*env)->ExceptionCheck(env))
+        goto delete_name;
+
+    signature = wl_jni_string_to_utf8(env, jstr);
+    if ((*env)->ExceptionCheck(env))
+        goto delete_name;
+
+    cls = (*env)->GetObjectField(env, jinterface, Interface.clazz);
+
+    len = strlen(signature) + strlen(data_type) + strlen("()V") + 1;
+    full_signature = malloc(len);
+    if (full_signature == NULL) {
+        (*env)->DeleteLocalRef(env, cls);
+        wl_jni_throw_OutOfMemoryError(env, NULL);
+        goto delete_signature;
+    }
+
+    full_signature[0] = '(';
+    full_signature[1] = '\0';
+
+    strcat(full_signature, data_type);
+    strcat(full_signature, signature);
+    strcat(full_signature, ")V");
+
+    mid = (*env)->GetMethodID(env, cls, name, full_signature);
+    (*env)->DeleteLocalRef(env, cls);
+
+delete_signature:
+    free(signature);
+delete_name:
+    free(name);
+
+    return mid;
+}
+
 JNIEXPORT void JNICALL
 Java_org_freedesktop_wayland_Interface_createNative(JNIEnv * env,
-        jobject jinterface)
+        jobject jinterface, jlong implementation_ptr)
 {
-    struct wl_interface * interface;
+    struct wl_jni_interface *jni_interface;
+    struct wl_interface *interface;
     jstring jstr;
     jarray jarr;
     jobject jobj;
     int method, event;
     struct wl_message * methods, * events;
 
-    interface = malloc(sizeof(struct wl_interface));
-    if (interface == NULL) {
+    jni_interface = malloc(sizeof(struct wl_jni_interface));
+    if (jni_interface == NULL) {
         wl_jni_throw_OutOfMemoryError(env, NULL);
         return;
     }
 
     (*env)->SetLongField(env, jinterface, Interface.interface_ptr,
-            (jlong)interface);
+            (jlong)jni_interface);
+    interface = &jni_interface->interface;
 
     jstr = (*env)->GetObjectField(env, jinterface, Interface.name);
-    if ((*env)->ExceptionCheck(env) == JNI_TRUE) goto delete_interface;
+    if ((*env)->ExceptionCheck(env))
+        goto delete_interface;
 
     interface->name = wl_jni_string_to_utf8(env, jstr);
     (*env)->DeleteLocalRef(env, jstr);
-    if ((*env)->ExceptionCheck(env) == JNI_TRUE) goto delete_interface;
+    if ((*env)->ExceptionCheck(env))
+        goto delete_interface;
 
-    interface->version =
+    interface->version = (1 << 16) |
             (*env)->GetIntField(env, jinterface, Interface.version);
-    if ((*env)->ExceptionCheck(env) == JNI_TRUE) goto delete_name;
+    if ((*env)->ExceptionCheck(env))
+        goto delete_name;
 
     /* Get the requests */
     jarr = (*env)->GetObjectField(env, jinterface, Interface.requests); 
-    if ((*env)->ExceptionCheck(env) == JNI_TRUE) goto delete_name;
+    if ((*env)->ExceptionCheck(env))
+        goto delete_name;
     if (jarr == NULL) {
         wl_jni_throw_NullPointerException(env, NULL);
         goto delete_name;
     }
 
     interface->method_count = (*env)->GetArrayLength(env, jarr);
-    if ((*env)->ExceptionCheck(env) == JNI_TRUE) goto delete_name;
+    if ((*env)->ExceptionCheck(env))
+        goto delete_name;
 
     methods = malloc(interface->method_count * sizeof(struct wl_message)); 
     if (methods == NULL) {
@@ -179,15 +261,31 @@ Java_org_freedesktop_wayland_Interface_createNative(JNIEnv * env,
         goto delete_name;
     }
 
+    jni_interface->requests =
+            malloc(interface->method_count * sizeof(jmethodID));
+    if (jni_interface->requests == NULL) {
+        wl_jni_throw_OutOfMemoryError(env, NULL);
+        goto delete_methods;
+    }
+
     interface->methods = methods;
 
     for (method = 0; method < interface->method_count; ++method) {
         jobj = (*env)->GetObjectArrayElement(env, jarr, method);
-        if ((*env)->ExceptionCheck(env) == JNI_TRUE) goto delete_methods;
+        if ((*env)->ExceptionCheck(env) == JNI_TRUE)
+            goto delete_methods;
 
         get_native_message(env, jobj, methods + method);
+        if ((*env)->ExceptionCheck(env) == JNI_TRUE) {
+            (*env)->DeleteLocalRef(env, jobj);
+            goto delete_methods;
+        }
+
+        jni_interface->requests[method] = get_java_method(env, jinterface,
+                jobj, "Lorg/freedesktop/wayland/server/Client;");
         (*env)->DeleteLocalRef(env, jobj);
-        if ((*env)->ExceptionCheck(env) == JNI_TRUE) goto delete_methods;
+        if ((*env)->ExceptionCheck(env))
+            goto delete_methods;
     }
     (*env)->DeleteLocalRef(env, jarr);
 
@@ -219,32 +317,30 @@ Java_org_freedesktop_wayland_Interface_createNative(JNIEnv * env,
     }
     (*env)->DeleteLocalRef(env, jarr);
 
+    interface->dispatcher = &wl_jni_resource_dispatcher;
+
     return;
 
 delete_events:
     --event;
-    for (; event >= 0; --event) {
-        free((void *)interface->events[event].name);
-        free((void *)interface->events[event].signature);
-        free((void *)interface->events[event].types);
-    }
+    for (; event >= 0; --event)
+        destroy_native_message(&interface->events[event]);
     free((void *)interface->events);
+    free(jni_interface->events);
 
 delete_methods:
     --method;
-    for (; method >= 0; --method) {
-        free((void *)interface->methods[method].name);
-        free((void *)interface->methods[method].signature);
-        free((void *)interface->methods[method].types);
-    }
+    for (; method >= 0; --method)
+        destroy_native_message(&interface->methods[method]);
     free((void *)interface->methods);
+    free(jni_interface->requests);
 
 delete_name:
     if (interface->name != NULL)
         free((void *)interface->name);
 
 delete_interface:
-    free(interface);
+    free(jni_interface);
 
     (*env)->SetLongField(env, jinterface, Interface.interface_ptr, 0);
 }
@@ -320,10 +416,6 @@ Java_org_freedesktop_wayland_Interface_initializeJNI(JNIEnv * env,
     Interface.interface_ptr = (*env)->GetFieldID(env, Interface.class,
             "interface_ptr", "J");
     if (Interface.interface_ptr == NULL) return; /* Exception Thrown */
-
-    Interface.implementation_ptr = (*env)->GetFieldID(env, Interface.class,
-            "implementation_ptr", "J");
-    if (Interface.implementation_ptr == NULL) return; /* Exception Thrown */
 
     cls = (*env)->FindClass(env, "org/freedesktop/wayland/Interface$Message");
     Interface.Message.class = (*env)->NewGlobalRef(env, cls);

@@ -27,10 +27,10 @@ public class Interface
 {
     public static class Message
     {
-        private String name;
-        private String signature;
-        private String javaSignature;
-        private Interface[] types;
+        private final String name;
+        private final String signature;
+        private final String javaSignature;
+        private final Interface[] types;
 
         public Message(String name, String signature, Interface[] types)
         {
@@ -40,7 +40,6 @@ public class Interface
 
             StringWriter writer = new StringWriter();
 
-            writer.write("(");
             int tpos = 0;
             for (int spos = 0; spos < signature.length(); ++spos) {
                 switch(signature.charAt(spos)) {
@@ -54,39 +53,30 @@ public class Interface
                     writer.write("I");
                     break;
                 case 'f':
-                    writer.write("Lorg.freedesktop.wayland.Fixed;");
+                    writer.write("Lorg/freedesktop/wayland/Fixed;");
                     break;
                 case 's':
-                    writer.write("Ljava.lang.String;");
+                    writer.write("Ljava/lang/String;");
                     break;
                 case 'o':
-                    writer.write("L" + types[tpos].clazz.getName() + ";");
+                    writer.write("L" + types[tpos].clazz.getName().replace('.', '/') + ";");
                     break;
                 case 'n':
                     writer.write("I");
                     break;
                 case 'a':
-                    writer.write("[B");
+                    writer.write("Ljava.lang.ByteBuffer;");
                     break;
                 case 'h':
                     writer.write("I");
                     break;
                 default:
-                    // Skip unknown characters. Throw exception here?
-                    continue;
+                    throw new IllegalArgumentException("Invalid signature");
                 }
                 ++tpos;
             }
-            writer.write(")V");
-        }
 
-        public Message(String name, String signature, String javaSignature,
-                Interface[] types)
-        {
-            this.name = name;
-            this.signature = signature;
-            this.javaSignature = javaSignature;
-            this.types = types;
+            this.javaSignature = writer.toString();
         }
     }
 
@@ -97,11 +87,14 @@ public class Interface
     private Message[] events;
     private long interface_ptr;
 
-    // I need to get rid of this ASAP
-    private long implementation_ptr;
-
     public Interface(String name, Class<?> clazz, int version,
             Message[] requests, Message[] events)
+    {
+        this(name, clazz, version, requests, events, 0);
+    }
+
+    public Interface(String name, Class<?> clazz, int version,  
+            Message[] requests, Message[] events, long implementation_ptr)
     {
         this.name = name;
         this.clazz = clazz;
@@ -109,20 +102,11 @@ public class Interface
         this.requests = requests;
         this.events = events;
         this.interface_ptr = 0;
-        this.implementation_ptr = 0;
 
-        createNative();
+        createNative(implementation_ptr);
     }
 
-    public Interface(String name, Class<?> clazz, int version,  
-            Message[] requests, Message[] events, long implementation_ptr)
-    {
-        this(name, clazz, version, requests, events);
-
-        this.implementation_ptr = implementation_ptr;
-    }
-
-    private native void createNative();
+    private native void createNative(long implementation_ptr);
     private native void destroyNative();
 
     @Override

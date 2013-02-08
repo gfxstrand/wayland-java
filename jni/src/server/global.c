@@ -67,6 +67,9 @@ wl_jni_global_bind_func(struct wl_client * client, void * data,
             jclient, (jint)version, (jint)id);
 
     (*env)->DeleteLocalRef(env, jglobal);
+
+    if ((*env)->ExceptionCheck(env))
+        (*env)->ExceptionDescribe(env);
 }
 
 void

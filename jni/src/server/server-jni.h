@@ -24,6 +24,7 @@
 
 #include "wayland-jni.h"
 
+#include "wayland-util.h"
 #include "wayland-server.h"
 
 struct wl_jni_object_wrapper {
@@ -75,6 +76,10 @@ void wl_jni_resource_call_request(struct wl_client * client,
         struct wl_resource * resource,
         const char * method_name, const char * prototype,
         const char * java_prototype, ...);
+
+void wl_jni_resource_dispatcher(struct wl_object *target, uint32_t opcode,
+        const struct wl_message *message, void *client,
+        union wl_argument *args);
 
 struct wl_jni_listener {
     struct wl_listener listener;

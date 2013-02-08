@@ -100,9 +100,7 @@ class Interface
             description.writeJavaDoc(writer, "");
         writer.write("public final class " + toClassName(name) + "\n");
         writer.write("{\n");
-        writer.write("\tpublic static native long getWLImplementation();\n");
 
-        writer.write("\n");
         writer.write("\tpublic static final Interface WAYLAND_INTERFACE = ");
         writer.write("new Interface(\n");
         writer.write("\t\t\"" + wl_name + "\", ");
@@ -116,8 +114,7 @@ class Interface
         for (Event event : events) {
             event.writeJavaWaylandMessageInfo(writer);
         }
-        writer.write("\t\t},\n");
-        writer.write("\t\tgetWLImplementation()\n");
+        writer.write("\t\t}\n");
         writer.write("\t);\n");
 
         for (Enum enm : enums) {

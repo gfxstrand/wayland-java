@@ -279,6 +279,7 @@ Java_org_freedesktop_wayland_server_Resource_destroy(JNIEnv * env,
     }
 }
 
+/* TODO: This code DOES NOT WORK!!! */
 static void
 handle_resource_errors(JNIEnv * env, struct wl_resource * resource)
 {
@@ -292,7 +293,7 @@ handle_resource_errors(JNIEnv * env, struct wl_resource * resource)
     if (exception == NULL)
         return;
 
-    c_msg = wl_jni_string_to_utf8(env, message);
+    (*env)->ExceptionDescribe(env);
 
     if ((*env)->IsInstanceOf(env, exception,
             java.lang.OutOfMemoryError.class)) {
@@ -364,6 +365,142 @@ unhandled_exception:
 }
 
 void
+wl_jni_resource_dispatcher(struct wl_object *target, uint32_t opcode,
+        const struct wl_message *message, void *client,
+        union wl_argument *args)
+{
+    struct wl_resource *resource, *res_tmp;
+    struct wl_object *obj_tmp;
+    struct wl_array *arr;
+    const char *signature;
+    int nargs, nrefs;
+
+    jvalue *jargs, *jargs_tmp;
+    union wl_argument *args_tmp;
+    JNIEnv *env;
+    jobject jimplementation, jresource, jtmp;
+    jmethodID mid;
+
+    resource = wl_container_of(target, resource, object);
+
+    env = wl_jni_get_env();
+
+    /* Count the number of arguments and references */
+    nargs = 0;
+    nrefs = 0;
+    for (signature = message->signature; *signature != '\0'; ++signature) {
+        switch (*signature) {
+        /* These types will require references */
+        case 'f':
+        case 's':
+        case 'o':
+        case 'a':
+            ++nrefs;
+        /* These types don't require references */
+        case 'u':
+        case 'i':
+        case 'n':
+        case 'h':
+            ++nargs;
+            break;
+        case '?':
+            break;
+        }
+    }
+
+    jargs = malloc(sizeof(jvalue) * (nargs + 1));
+    if (jargs == NULL) {
+        wl_jni_throw_OutOfMemoryError(env, NULL);
+        goto handle_exceptions; /* Exception Thrown */
+    }
+
+    if ((*env)->PushLocalFrame(env, nrefs + 3) < 0)
+        goto handle_exceptions; /* Exception Thrown */
+
+    jresource = wl_jni_resource_to_java(env, resource);
+    if ((*env)->ExceptionCheck(env)) {
+        goto pop_local_frame;
+    } else if (resource == NULL) {
+        wl_jni_throw_NullPointerException(env, "Resource should not be null");
+        goto pop_local_frame;
+    }
+
+    jargs[0].l = wl_jni_client_to_java(env, (struct wl_client *)client);
+    if (jargs[0].l == NULL)
+        goto pop_local_frame; /* Exception Thrown */
+
+    jargs_tmp = jargs + 1;
+    args_tmp = args;
+    for (signature = message->signature; *signature != '\0'; ++signature) {
+        switch(*signature) {
+        case 'i':
+            (jargs_tmp++)->i = (jint)(args_tmp++)->i;
+            break;
+        case 'u':
+            (jargs_tmp++)->i = (jint)(args_tmp++)->u;
+            break;
+        case 'f':
+            jtmp = wl_jni_fixed_to_java(env, (args_tmp++)->f);
+            if (jtmp == NULL)
+                goto pop_local_frame;
+            (jargs_tmp++)->l = jtmp;
+            break;
+        case 's':
+            jtmp = wl_jni_string_from_utf8(env, (args_tmp++)->s);
+            if ((*env)->ExceptionCheck(env))
+                goto pop_local_frame;
+            (jargs_tmp++)->l = jtmp;
+            break;
+        case 'o':
+            obj_tmp = (args_tmp++)->o;
+            res_tmp = wl_container_of(obj_tmp, res_tmp, object);
+
+            jtmp = wl_jni_resource_to_java(env, res_tmp);
+            if ((*env)->ExceptionCheck(env))
+                goto pop_local_frame;
+
+            (jargs_tmp++)->l = jtmp;
+            break;
+        case 'n':
+            (jargs_tmp++)->i = (jint)(args_tmp++)->n;
+            break;
+        case 'a':
+            arr = (args_tmp++)->a;
+            jtmp = (*env)->NewDirectByteBuffer(env, arr->data, arr->size);
+            if (jtmp == NULL)
+                goto pop_local_frame; /* Exception Thrown */
+            (jargs_tmp++)->l = jtmp;
+            break;
+        case 'h':
+            (jargs_tmp++)->i = (jint)(args_tmp++)->h;
+            break;
+        case '?':
+            continue;
+        default:
+            wl_jni_throw_IllegalArgumentException(env,
+                    "Invalid wayland request prototype");
+            goto pop_local_frame; /* Exception Thrown */
+        }
+    }
+
+    jimplementation = (*env)->GetObjectField(env, jresource, Resource.data);
+    if ((*env)->ExceptionCheck(env))
+        goto pop_local_frame;
+
+    mid = ((jmethodID *)target->implementation)[opcode];
+    (*env)->CallVoidMethodA(env, jimplementation, mid, jargs);
+
+pop_local_frame:
+    (*env)->PopLocalFrame(env, NULL);
+    free(jargs);
+
+handle_exceptions:
+    /* Handle Exceptions here */
+    handle_resource_errors(env, resource);
+    return;
+}
+
+void
 wl_jni_resource_call_request(struct wl_client * client,
         struct wl_resource * resource,
         const char * method_name, const char * wl_prototype,
@@ -377,6 +514,7 @@ wl_jni_resource_call_request(struct wl_client * client,
     va_list ap;
     jobject jresource;
     jobject jclient;
+    jobject jobj;
 
     /* We'll need these for calling constructors */
     jclass cls;
@@ -387,6 +525,8 @@ wl_jni_resource_call_request(struct wl_client * client,
     wl_fixed_t fixed_tmp;
     struct wl_array * array_tmp;
     struct wl_resource * res_tmp;
+
+    LOG_DEBUG("Calling Request: %s", method_name);
 
     /* Calculate the number of references and the number of arguments */
     for (nargs = 1, nrefs = 0, wl_prot_tmp = wl_prototype;
@@ -416,7 +556,7 @@ wl_jni_resource_call_request(struct wl_client * client,
     }
     
     /* Ensure the required number of references */
-    if ((*env)->EnsureLocalCapacity(env, nrefs + 3) < 0) {
+    if ((*env)->EnsureLocalCapacity(env, nrefs + 4) < 0) {
         goto early_exception; /* Exception Thrown */
     }
 
@@ -504,9 +644,16 @@ wl_jni_resource_call_request(struct wl_client * client,
     if (jresource == NULL)
         goto free_arguments;
 
-    cls = (*env)->GetObjectClass(env, jresource);
+    jobj = (*env)->GetObjectField(env, jresource, Resource.data);
+    if ((*env)->ExceptionCheck(env)) {
+        (*env)->DeleteLocalRef(env, jresource);
+        goto free_arguments;
+    }
+
+    cls = (*env)->GetObjectClass(env, jobj);
     if (cls == NULL) {
         (*env)->DeleteLocalRef(env, jresource);
+        (*env)->DeleteLocalRef(env, jobj);
         goto free_arguments;
     }
 
@@ -514,10 +661,11 @@ wl_jni_resource_call_request(struct wl_client * client,
     (*env)->DeleteLocalRef(env, cls);
     if (mid == NULL) {
         (*env)->DeleteLocalRef(env, jresource);
+        (*env)->DeleteLocalRef(env, jobj);
         goto free_arguments;
     }
 
-    (*env)->CallVoidMethodA(env, resource, mid, args);
+    (*env)->CallVoidMethodA(env, jobj, mid, args);
     (*env)->DeleteLocalRef(env, jresource);
 
 free_arguments:
