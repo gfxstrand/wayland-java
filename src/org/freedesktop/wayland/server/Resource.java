@@ -65,6 +65,9 @@ public class Resource
     public native void addDestroyListener(Listener listener);
     public native void destroy();
 
+    public native void postEvent(int opcode, Object...args);
+    public native void postError(int code, String msg);
+
     @Override
     public void finalize() throws Throwable
     {

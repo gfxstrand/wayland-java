@@ -70,6 +70,9 @@ struct {
         struct {
             jclass class;
         } NoSuchMethodError;
+        struct {
+            jmethodID intValue;
+        } Integer;
     } lang;
 } java;
 
@@ -277,6 +280,124 @@ Java_org_freedesktop_wayland_server_Resource_destroy(JNIEnv * env,
         /* In this case we clean up ourselves */
         wl_signal_emit(&resource->destroy_signal, resource);
     }
+}
+
+JNIEXPORT void JNICALL
+Java_org_freedesktop_wayland_server_Resource_postEvent(JNIEnv * env,
+        jobject jresource, jint opcode, jarray jargs)
+{
+    struct wl_resource *resource;
+    union wl_argument *args;
+    const char *sig_tmp;
+    char arg_type;
+    int num_args, arg;
+    void **extras;
+
+    jobject jobj;
+
+    resource = wl_jni_resource_from_java(env, jresource);
+
+    num_args = (*env)->GetArrayLength(env, jargs);
+    args = malloc(num_args * sizeof(union wl_argument));
+    if (args == NULL) {
+        wl_jni_throw_OutOfMemoryError(env, NULL);
+        return;
+    }
+    memset(args, 0, num_args * sizeof(union wl_argument));
+
+    extras = malloc(num_args * sizeof(void *));
+    if (args == NULL) {
+        free(args);
+        wl_jni_throw_OutOfMemoryError(env, NULL);
+        return;
+    }
+    memset(extras, 0, num_args * sizeof(void *));
+
+    sig_tmp = resource->object.interface->events[opcode].signature;
+    for (arg = 0; arg < num_args; ++arg) {
+        arg_type = *sig_tmp++;
+        if (arg_type == '?') {
+            --arg;
+            continue;
+        }
+
+        jobj = (*env)->GetObjectArrayElement(env, jargs, arg);
+        if ((*env)->ExceptionCheck(env))
+            goto free_args;
+
+        switch(arg_type) {
+        case 'i':
+            args[arg].i = (int32_t)(*env)->CallIntMethod(env, jobj,
+                    java.lang.Integer.intValue);
+            break;
+        case 'u':
+            args[arg].u = (uint32_t)(*env)->CallIntMethod(env, jobj,
+                    java.lang.Integer.intValue);
+            break;
+        case 'f':
+            args[arg].f = wl_jni_fixed_from_java(env, jobj);
+            break;
+        case 's':
+            args[arg].s = wl_jni_string_to_utf8(env, jobj);
+            extras[arg] = args[arg].s;
+            break;
+        case 'o':
+            args[arg].o = &wl_jni_resource_from_java(env, jobj)->object;
+            break;
+        case 'n':
+            /* This never happens from a resource */
+            break;
+        case 'a':
+            extras[arg] = malloc(sizeof(struct wl_array));
+            if (extras[arg] == NULL) {
+                wl_jni_throw_OutOfMemoryError(env, NULL);
+                goto free_args;
+            }
+            args[arg].a = (struct wl_array *)extras[arg];
+            args[arg].a->alloc = 0;
+            args[arg].a->data = (*env)->GetDirectBufferAddress(env, jobj);
+            args[arg].a->size = (*env)->GetDirectBufferCapacity(env, jobj);
+            break;
+        case 'h':
+            args[arg].h = (*env)->CallIntMethod(env,
+                    jobj, java.lang.Integer.intValue);
+            break;
+        }
+        (*env)->DeleteLocalRef(env, jobj);
+        if ((*env)->ExceptionCheck(env))
+            goto free_args;
+    }
+
+    wl_resource_post_event_a(resource, opcode, args);
+
+free_args:
+    free(args);
+    for (arg = 0; arg < num_args; ++arg)
+        free(extras[arg]);
+    free(extras);
+    return;
+}
+
+JNIEXPORT void JNICALL
+Java_org_freedesktop_wayland_server_Resource_postError(JNIEnv * env,
+        jobject jresource, jint code, jstring jmsg)
+{
+    struct wl_resource *resource;
+    char *msg;
+
+    resource = wl_jni_resource_from_java(env, jresource);
+
+    msg = wl_jni_string_to_utf8(env, jmsg);
+    if ((*env)->ExceptionCheck(env))
+        return;
+
+    if (msg == NULL) {
+        wl_resource_post_error(resource, code, "");
+    } else {
+        wl_resource_post_error(resource, code, "%s", msg);
+    }
+
+    free(msg);
 }
 
 /* TODO: This code DOES NOT WORK!!! */
@@ -756,6 +877,15 @@ Java_org_freedesktop_wayland_server_Resource_initializeJNI(JNIEnv * env,
     java.lang.Throwable.getMessage = (*env)->GetMethodID(env,
             java.lang.Throwable.class, "getMessage", "()Ljava/lang/String;");
     if (java.lang.Throwable.getMessage == NULL)
+        return; /* Exception Thrown */
+
+    cls = (*env)->FindClass(env, "java/lang/Integer");
+    if (cls == NULL)
+        return; /* Exception Thrown */
+    java.lang.Integer.intValue = (*env)->GetMethodID(env,
+            cls, "intValue", "()I");
+    (*env)->DeleteLocalRef(env, cls);
+    if (java.lang.Integer.intValue == NULL)
         return; /* Exception Thrown */
 }
 
