@@ -42,10 +42,7 @@ OF THIS SOFTWARE.
             description="Execute the scanner to generate the protocol classes"
             depends="scanner">
         <scan-protocols src="${protocol.src}"
-                dest="src" type="java" component="server"
-                javapackage="${protocol.namespace}" />
-        <scan-protocols src="${protocol.src}"
-                dest="jni/src/server/protocol.c" type="c" component="server"
+                dest="src" component="server"
                 javapackage="${protocol.namespace}" />
     </target>
 

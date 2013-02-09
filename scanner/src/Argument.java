@@ -150,30 +150,6 @@ class Argument
         }
     }
 
-    public String getJNIType()
-    {
-        switch (type) {
-        case INT:
-            return "jint";
-        case UINT:
-            return "jint";
-        case FIXED:
-            return "jobject";
-        case STRING:
-            return "jstring";
-        case OBJECT:
-            return "jobject";
-        case NEW_ID:
-            return "jint";
-        case ARRAY:
-            return "jarray";
-        case FD:
-            return "jint";
-        default:
-            return null;
-        }
-    }
-
     public String getWLPrototype()
     {
         switch (type) {
@@ -226,69 +202,6 @@ class Argument
     public void writeJavaDeclaration(Writer writer) throws IOException
     {
         writer.write(getJavaType() + " " + name);
-    }
-
-    public void writeCDeclaration(Writer writer) throws IOException
-    {
-        writer.write(getCType() + " " + name);
-    }
-
-    public void writeJNIToCConversion(Writer writer) throws IOException
-    {
-        switch (type) {
-        case INT:
-            writer.write("(int32_t)" + name);
-            break;
-        case UINT:
-            writer.write("(uint32_t)" + name);
-            break;
-        case FIXED:
-            writer.write("wl_jni_fixed_from_java(__env, " + name + ")");
-            break;
-        case STRING:
-            writer.write("wl_jni_string_to_utf8(__env, " + name + ")");
-            break;
-        case OBJECT:
-            writer.write("wl_jni_resource_from_java(__env, " + name + ")");
-            break;
-        case NEW_ID:
-            writer.write("(uint32_t)" + name);
-            break;
-        case ARRAY:
-            writer.write("(*__env)->GetByteArrayElements(__env,");
-            writer.write(" " + name + ", NULL)");
-            break;
-        case FD:
-            writer.write("(int32_t)" + name);
-            break;
-        }
-    }
-
-    public void writeJNICleanup(Writer writer, String jni_name)
-            throws IOException
-    {
-        switch (type) {
-        case INT:
-            break;
-        case UINT:
-            break;
-        case FIXED:
-            break;
-        case STRING:
-            writer.write("free(" + jni_name + ");");
-            break;
-        case OBJECT:
-            break;
-        case NEW_ID:
-            break;
-        case ARRAY:
-            writer.write("(*__env)->ReleaseByteArrayElements(__env,");
-            writer.write(" " + name + ", " + jni_name + ", JNI_ABORT);");
-            break;
-        case FD:
-            break;
-        }
-        
     }
 }
 

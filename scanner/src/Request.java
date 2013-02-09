@@ -73,48 +73,6 @@ class Request
         writer.write(");\n");
     }
 
-    public String getCServerWrapperName()
-    {
-        String pkg = iface.scanner.getJavaPackage();
-        if (pkg == null)
-            pkg = "";
-        else
-            pkg = pkg.replace(".", "_") + "_";
-        return pkg + iface.name + "_" + name;
-    }
-
-    public void writeCServerWrapper(Writer writer)
-            throws IOException
-    {
-        writer.write("static void\n");
-
-        writer.write(getCServerWrapperName() + "(");
-        writer.write("\n\t\tstruct wl_client * __client");
-        writer.write(",\n\t\tstruct wl_resource * __resource");
-        for (Argument arg : args) {
-            writer.write(",\n\t\t");
-            arg.writeCDeclaration(writer);
-        }
-        writer.write(")\n{\n");
-        writer.write("\twl_jni_resource_call_request(__client, __resource");
-        writer.write(",\n\t\t\t\"" + name + "\"");
-        writer.write(",\n\t\t\t\"");
-        for (Argument arg : args) {
-            writer.write(arg.getWLPrototype());
-        }
-        writer.write("\"");
-        writer.write(",\n\t\t\t\"(");
-        for (Argument arg : args) {
-            writer.write(arg.getJavaPrototype());
-        }
-        writer.write(")V\"");
-        for (Argument arg : args) {
-            writer.write(",\n\t\t\t" + arg.getName());
-        }
-        writer.write(");\n");
-        writer.write("}\n");
-    }
-
     public void writeJavaWaylandMessageInfo(Writer writer)
             throws IOException
     {

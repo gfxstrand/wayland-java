@@ -50,16 +50,6 @@ public class Scanner extends Task
         this.dest = dest;
     }
 
-    public enum CodeType {
-        java,
-        c
-    }
-    private CodeType type;
-    public void setType(CodeType type)
-    {
-        this.type = type;
-    }
-
     public enum Component {
         server,
         client
@@ -141,12 +131,9 @@ public class Scanner extends Task
 
         Protocol protocol = new Protocol(this, xmlElem);
 
-        if (component == Component.server && type == CodeType.java) {
+        if (component == Component.server) {
             protocol.writeServerJava(dest);
-        } else if (component == Component.client && type == CodeType.java) {
-        } else if (component == Component.server && type == CodeType.c) {
-            protocol.writeServerC(dest);
-        } else if (component == Component.client && type == CodeType.c) {
+        } else if (component == Component.client) {
         }
     }
 }

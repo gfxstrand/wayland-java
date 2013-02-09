@@ -138,53 +138,5 @@ class Interface
 
         writer.write("}\n");
     }
-
-    public void writeServerC(Writer writer) throws IOException
-    {
-        for (Request request : requests) {
-            writer.write("\n");
-            request.writeCServerWrapper(writer);
-        }
-
-        writer.write("\nstatic const __void_function ");
-        writer.write(name + "_implementation[] = {\n");
-        for (Request request : requests) {
-            writer.write("\t(__void_function)&");
-            writer.write(request.getCServerWrapperName() + ",\n");
-        }
-        writer.write("};\n");
-
-        writer.write("\nJNIEXPORT void JNICALL\n");
-        writer.write("Java");
-        String pkg = scanner.getJavaPackage();
-        if (pkg != null)
-            writer.write("_" + pkg.replace(".", "_"));
-        writer.write("_" + StringUtil.toJNIName(name) + "_setWLInterfaces(");
-        writer.write("\n\t\tJNIEnv * __env, jobject __jobj)\n");
-        writer.write("{\n");
-        writer.write("\tstruct wl_resource * resource;\n");
-        writer.write("\tresource = wl_jni_resource_from_java(__env, __jobj);\n");
-        writer.write("\tresource->object.interface = ");
-        writer.write("&" + wl_name + "_interface;\n");
-        writer.write("\tresource->object.implementation = ");
-        writer.write(name + "_implementation;\n");
-        writer.write("}\n");
-
-        writer.write("\nJNIEXPORT jlong JNICALL\n");
-        writer.write("Java");
-        if (pkg != null)
-            writer.write("_" + pkg.replace(".", "_"));
-        writer.write("_" + StringUtil.toJNIName(name) + "_getWLImplementation(");
-        writer.write("\n\t\tJNIEnv * __env, jclass __cls)\n");
-        writer.write("{\n");
-        writer.write("\treturn (jlong)(intptr_t)");
-        writer.write(name + "_implementation;\n");
-        writer.write("}\n");
-
-        for (Event event : events) {
-            writer.write("\n");
-            event.writeCServerNativeMethod(writer);
-        }
-    }
 }
 

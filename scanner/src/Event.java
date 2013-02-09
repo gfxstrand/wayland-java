@@ -79,50 +79,6 @@ class Event
         writer.write("\t}\n");
     }
 
-    public void writeCServerNativeMethod(Writer writer)
-            throws IOException
-    {
-        writer.write("JNIEXPORT void JNICALL\n");
-        writer.write("Java");
-
-        String pkg = iface.scanner.getJavaPackage();
-        if (pkg != null)
-            writer.write("_" + pkg.replace(".", "_"));
-
-        writer.write("_" + StringUtil.toJNIName(iface.name));
-        writer.write("_" + StringUtil.toJNIName(name) + "(");
-        writer.write("\n\t\tJNIEnv * __env, jclass __cls, jobject __jres");
-        for (Argument arg : args) {
-            writer.write(",\n\t\t");
-            writer.write(arg.getJNIType() + " " + arg.getName());
-        }
-        writer.write(")\n{\n");
-        for (Argument arg : args) {
-            writer.write("\t" + arg.getCType());
-            writer.write(" __jni_" + arg.getName() + ";\n");
-        }
-        writer.write("\n");
-        for (Argument arg : args) {
-            writer.write("\t__jni_" + arg.getName() + " = ");
-            arg.writeJNIToCConversion(writer);
-            writer.write(";\n");
-        }
-        writer.write("\n");
-
-        writer.write("\twl_resource_post_event(");
-        writer.write("wl_jni_resource_from_java(__env, __jres), " + id);
-        for (Argument arg : args) {
-            writer.write(",\n\t\t\t__jni_" + arg.getName());
-        }
-        writer.write(");\n\n");
-        for (Argument arg : args) {
-            writer.write("\t");
-            arg.writeJNICleanup(writer, "__jni_" + arg.getName());
-            writer.write("\n");
-        }
-        writer.write("}\n");
-    }
-
     public void writeJavaWaylandMessageInfo(Writer writer)
             throws IOException
     {

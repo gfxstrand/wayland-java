@@ -103,27 +103,5 @@ public class Protocol
             }
         }
     }
-
-    public void writeServerC(File dest)
-    {
-        try {
-            scanner.log("Generating " + dest);
-            Writer writer = new FileWriter(dest);
-
-            writeCopyright(writer);
-            writer.write("\n");
-            writer.write("#include <stdlib.h>\n");
-            writer.write("#include \"server-jni.h\"\n");
-            writer.write("#include \"wayland-server.h\"\n\n");
-            writer.write("typedef void (* __void_function)(void);\n");
-
-            for (Interface iFace : interfaces)
-                iFace.writeServerC(writer);
-
-            writer.close();
-        } catch (IOException e) {
-            throw new BuildException(e.getMessage());
-        }
-    }
 }
 
