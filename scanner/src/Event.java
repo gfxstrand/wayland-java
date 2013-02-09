@@ -62,15 +62,21 @@ class Event
     {
         if (description != null)
             description.writeJavaDoc(writer, "\t");
-        writer.write("\tpublic static native void " + name + "(");
+        writer.write("\tpublic static void " + name + "(");
         writer.write("Resource resource");
 
-        for (int i = 0; i < args.size(); ++i) {
+        for (Argument arg : args) {
             writer.write(", ");
-            args.get(i).writeJavaDeclaration(writer);
+            arg.writeJavaDeclaration(writer);
         }
 
+        writer.write(")\n");
+        writer.write("\t{\n");
+        writer.write("\t\tresource.postEvent(" + id);
+        for (Argument arg : args)
+            writer.write(", " + arg.getName());
         writer.write(");\n");
+        writer.write("\t}\n");
     }
 
     public void writeCServerNativeMethod(Writer writer)
