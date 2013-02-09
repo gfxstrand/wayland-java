@@ -224,8 +224,6 @@ Java_org_freedesktop_wayland_Interface_createNative(JNIEnv * env,
         return;
     }
 
-    (*env)->SetLongField(env, jinterface, Interface.interface_ptr,
-            (jlong)jni_interface);
     interface = &jni_interface->interface;
 
     jstr = (*env)->GetObjectField(env, jinterface, Interface.name);
@@ -319,6 +317,11 @@ Java_org_freedesktop_wayland_Interface_createNative(JNIEnv * env,
 
     interface->dispatcher = &wl_jni_resource_dispatcher;
 
+    (*env)->SetLongField(env, jinterface, Interface.interface_ptr,
+            (jlong)jni_interface);
+    if ((*env)->ExceptionCheck(env))
+        goto delete_events;
+
     return;
 
 delete_events:
@@ -341,8 +344,6 @@ delete_name:
 
 delete_interface:
     free(jni_interface);
-
-    (*env)->SetLongField(env, jinterface, Interface.interface_ptr, 0);
 }
 
 JNIEXPORT void JNICALL
