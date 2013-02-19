@@ -19,34 +19,212 @@
  * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE
  * OF THIS SOFTWARE.
  */
-#include <wayland-util.h>
-
 #include "wayland-jni.h"
 
-struct wl_object *
-wl_jni_object_from_java(JNIEnv * env, jobject jobj)
+#include <stdlib.h>
+
+/*
+ * This file contains functions that apply to all objects regardless of whether
+ * they are proxies or resources.  Specifically, it contains dispatchers and
+ * functions for converting arguments for posting to the wayland protocol
+ */
+
+/* 
+ * Copied from wayland source because it's useful.  The argument_details
+ * structure and associated functions are Copyright © 2008 Kristian Høgsberg
+ */
+struct argument_details {
+    char type;
+    int nullable;
+};
+
+static const char *
+get_next_argument(const char *signature, struct argument_details *details)
 {
-    struct wl_object * object;
-    jclass cls = (*env)->GetObjectClass(env, jobj);
-    jfieldID fid = (*env)->GetFieldID(env, cls, "object_ptr", "J");
-    object = (struct wl_object *)(*env)->GetLongField(env, jobj, fid);
-    (*env)->DeleteLocalRef(env, cls);
-    return object;
+    if (*signature == '?') {
+        details->nullable = 1;
+        signature++;
+    } else
+        details->nullable = 0;
+
+    details->type = *signature;
+    return signature + 1;
 }
 
-JNIEXPORT void JNICALL
-Java_org_freedesktop_wayland_Object_setID(JNIEnv * env, jobject jobj, int id)
+static int
+arg_count_for_signature(const char *signature)
 {
-    struct wl_object * object;
-    object = wl_jni_object_from_java(env, jobj);
-    object->id = id;
+    int count = 0;
+    while (*signature) {
+        if (*signature != '?')
+            count++;
+        signature++;
+    }
+    return count;
 }
 
-JNIEXPORT int JNICALL
-Java_org_freedesktop_wayland_Object_getID(JNIEnv * env, jobject jobj)
+/*
+ * Frees the memory allocated by wl_jni_arguments_from_java
+ */
+void
+wl_jni_arguments_from_java_destroy(union wl_argument *args,
+        const char *signature, int count)
 {
-    struct wl_object * object;
-    object = wl_jni_object_from_java(env, jobj);
-    return object->id;
+    int i;
+    struct argument_details arg;
+
+    for (i = 0; i < count; ++i) {
+        signature = get_next_argument(signature, &arg);
+
+        switch(arg.type) {
+        case 's':
+            free((char *)args[i].s);
+            break;
+        case 'a':
+            free(args[i].a);
+            break;
+        default:
+            break;
+        }
+    }
+}
+
+/*
+ * Converts the java array of java-formatted arguments to wayland-formatted
+ * arguments and stores them in args.
+ */
+void wl_jni_arguments_from_java(JNIEnv *env, union wl_argument *args,
+        jarray jargs, const char *signature, int count,
+        struct wl_object *(* object_conversion)(JNIEnv *env, jobject))
+{
+    int i;
+    const char *sig_tmp;
+    struct argument_details arg;
+    jobject jobj;
+
+    sig_tmp = signature;
+    for (i = 0; i < count; ++i) {
+        sig_tmp = get_next_argument(sig_tmp, &arg);
+
+        jobj = (*env)->GetObjectArrayElement(env, jargs, i);
+        if ((*env)->ExceptionCheck(env))
+            goto free_args;
+
+        switch(arg.type) {
+        case 'i':
+            args[i].i = (int32_t)wl_jni_unbox_integer(env, jobj);
+            break;
+        case 'u':
+            args[i].u = (uint32_t)wl_jni_unbox_integer(env, jobj);
+            break;
+        case 'f':
+            args[i].f = wl_jni_fixed_from_java(env, jobj);
+            break;
+        case 's':
+            args[i].s = wl_jni_string_to_utf8(env, jobj);
+            break;
+        case 'o':
+            args[i].o = (*object_conversion)(env, jobj);
+            break;
+        case 'n':
+            /* new_id types are actually expected to be passed in as objects */
+            args[i].o = (*object_conversion)(env, jobj);
+            break;
+        case 'a':
+            args[i].a = malloc(sizeof(struct wl_array));
+            if (args[i].a == NULL) {
+                wl_jni_throw_OutOfMemoryError(env, NULL);
+                goto free_args;
+            }
+
+            args[i].a->alloc = 0;
+            args[i].a->data = (*env)->GetDirectBufferAddress(env, jobj);
+            args[i].a->size = (*env)->GetDirectBufferCapacity(env, jobj);
+            break;
+        case 'h':
+            args[i].h = wl_jni_unbox_integer(env, jobj);
+            break;
+        }
+        (*env)->DeleteLocalRef(env, jobj);
+        if ((*env)->ExceptionCheck(env))
+            goto free_args;
+    }
+
+    return;
+
+free_args:
+    wl_jni_arguments_from_java_destroy(args, signature, i);
+}
+
+/*
+ * Converts the wayland-formatted arguments in args to java-formatted arguments
+ * and stores them in the array given by jargs
+ */
+void
+wl_jni_arguments_to_java(JNIEnv *env, union wl_argument *args, jvalue *jargs,
+        const char *signature, int count,
+        jobject (* object_conversion)(JNIEnv *env, struct wl_object *))
+{
+    int i;
+    struct argument_details arg;
+
+    for (i = 0; i < count; ++i) {
+        signature = get_next_argument(signature, &arg);
+
+        switch(arg.type) {
+        case 'i':
+            jargs[i].i = (jint)args[i].i;
+            break;
+        case 'u':
+            jargs[i].i = (jint)args[i].u;
+            break;
+        case 'f':
+            jargs[i].l = wl_jni_fixed_to_java(env, args[i].f);
+            if (jargs[i].l == NULL)
+                goto error;
+            break;
+        case 's':
+            if (! arg.nullable && args[i].s == NULL) {
+                wl_jni_throw_NullPointerException(env, NULL);
+                goto error;
+            }
+
+            jargs[i].l = wl_jni_string_from_utf8(env, args[i].s);
+            if ((*env)->ExceptionCheck(env))
+                goto error;
+            break;
+        case 'o':
+            if (! arg.nullable && args[i].o == NULL) {
+                wl_jni_throw_NullPointerException(env, NULL);
+                goto error;
+            }
+
+            jargs[i].l = (*object_conversion)(env, args[i].o);
+            if ((*env)->ExceptionCheck(env))
+                goto error;
+            break;
+        case 'n':
+            jargs[i].i = (jint)args[i].n;
+            break;
+        case 'a':
+            jargs[i].l = (*env)->NewDirectByteBuffer(env,
+                    args[i].a->data, args[i].a->size);
+            if (jargs[i].l == NULL)
+                goto error; /* Exception Thrown */
+            break;
+        case 'h':
+            jargs[i].i = (jint)args[i].h;
+            break;
+        case '?':
+            continue;
+        default:
+            wl_jni_throw_IllegalArgumentException(env,
+                    "Invalid wayland request prototype");
+            goto error; /* Exception Thrown */
+        }
+    }
+
+error:
+    return;
 }
 

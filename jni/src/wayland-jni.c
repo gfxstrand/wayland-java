@@ -71,6 +71,10 @@ static struct {
         struct {
             jclass class;
         } RuntimeException;
+
+        struct {
+            jmethodID intValue;
+        } Integer;
     } lang;
 
     struct {
@@ -150,6 +154,15 @@ wl_jni_ensure_object_cache(JNIEnv * env)
         goto exception;
     }
     cls = NULL;
+
+    cls = (*env)->FindClass(env, "java/lang/Integer");
+    if (cls == NULL)
+        goto exception;
+    java.lang.Integer.intValue = (*env)->GetMethodID(env,
+            cls, "intValue", "()I");
+    (*env)->DeleteLocalRef(env, cls);
+    if (java.lang.Integer.intValue == NULL)
+        goto exception;
 
     cls = (*env)->FindClass(env, "java/io/IOException");
     if (cls == NULL) goto exception;
@@ -254,7 +267,7 @@ wl_jni_throw_by_name(JNIEnv * env, const char * name, const char * message)
 
     cls = (*env)->FindClass(env, name);
     if (cls == NULL)
-        return /* Exception Thrown */
+        return; /* Exception Thrown */
 
     (*env)->ThrowNew(env, cls, message);
 }
@@ -277,6 +290,12 @@ wl_jni_throw_from_errno(JNIEnv * env, int err)
         (*env)->ThrowNew(env, java.lang.RuntimeException.class, strerror(err));
         return;
     }
+}
+
+jint
+wl_jni_unbox_integer(JNIEnv *env, jobject integer)
+{
+    return (*env)->CallIntMethod(env, integer, java.lang.Integer.intValue);
 }
 
 JNIEnv *
@@ -438,7 +457,7 @@ wl_jni_string_from_utf8(JNIEnv * env, const char * str)
     bytes = (*env)->NewByteArray(env, len);
     if (bytes == NULL) return NULL; /* Exception Thrown */
 
-    (*env)->SetByteArrayRegion(env, bytes, 0, len, str);
+    (*env)->SetByteArrayRegion(env, bytes, 0, len, (jbyte *)str);
     if ((*env)->ExceptionCheck(env) == JNI_TRUE)
         goto cleanup;
 
@@ -481,7 +500,7 @@ wl_jni_string_to_utf8(JNIEnv * env, jstring java_str)
         return NULL;
     }
 
-    (*env)->GetByteArrayRegion(env, bytes, 0, len, c_str);
+    (*env)->GetByteArrayRegion(env, bytes, 0, len, (jbyte *)c_str);
     if ((*env)->ExceptionCheck(env) == JNI_TRUE) {
         (*env)->DeleteLocalRef(env, bytes);
         free(c_str);
@@ -522,7 +541,7 @@ wl_jni_string_to_default(JNIEnv * env, jstring java_str)
         return NULL;
     }
 
-    (*env)->GetByteArrayRegion(env, bytes, 0, len, c_str);
+    (*env)->GetByteArrayRegion(env, bytes, 0, len, (jbyte *)c_str);
     if ((*env)->ExceptionCheck(env) == JNI_TRUE) {
         (*env)->DeleteLocalRef(env, bytes);
         free(c_str);

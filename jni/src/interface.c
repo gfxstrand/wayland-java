@@ -45,6 +45,9 @@ static struct {
     } Message;
 } Interface;
 
+wl_interface_dispatcher_func_t wl_jni_resource_dispatcher;
+wl_interface_dispatcher_func_t wl_jni_proxy_dispatcher;
+
 struct wl_jni_interface
 {
     struct wl_interface interface;
@@ -206,6 +209,21 @@ delete_name:
     return mid;
 }
 
+void
+method_dispatch_forward(struct wl_object *target, uint32_t opcode,
+        const struct wl_message *message, void *data, union wl_argument *args)
+{
+    (*wl_jni_resource_dispatcher)(target, opcode, message, data, args);
+}
+
+void
+event_dispatch_forward(struct wl_object *target, uint32_t opcode,
+        const struct wl_message *message, void *data, union wl_argument *args)
+{
+    (*wl_jni_proxy_dispatcher)(target, opcode, message, data, args);
+}
+
+
 JNIEXPORT void JNICALL
 Java_org_freedesktop_wayland_Interface_createNative(JNIEnv * env,
         jobject jinterface, jlong implementation_ptr)
@@ -315,7 +333,8 @@ Java_org_freedesktop_wayland_Interface_createNative(JNIEnv * env,
     }
     (*env)->DeleteLocalRef(env, jarr);
 
-    interface->dispatcher = &wl_jni_resource_dispatcher;
+    interface->method_dispatcher = &method_dispatch_forward;
+    interface->event_dispatcher = &event_dispatch_forward;
 
     (*env)->SetLongField(env, jinterface, Interface.interface_ptr,
             (jlong)jni_interface);

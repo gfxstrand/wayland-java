@@ -41,16 +41,30 @@
 wl_fixed_t wl_jni_fixed_from_java(JNIEnv * env, jobject jobj);
 jobject wl_jni_fixed_to_java(JNIEnv * env, wl_fixed_t fixed);
 
+extern wl_interface_dispatcher_func_t wl_jni_resource_dispatcher;
+extern wl_interface_dispatcher_func_t wl_jni_proxy_dispatcher;
+
 struct wl_interface * wl_jni_interface_from_java(JNIEnv * env,
         jobject jinterface);
 void wl_jni_interface_init_object(JNIEnv * env, jobject jinterface,
         struct wl_object * obj);
+
+void wl_jni_arguments_from_java(JNIEnv *env, union wl_argument *args,
+        jarray jargs, const char *signature, int count,
+        struct wl_object *(* object_conversion)(JNIEnv *env, jobject));
+void wl_jni_arguments_to_java(JNIEnv *env, union wl_argument *args,
+        jvalue *jargs, const char *signature, int count,
+        jobject (* object_conversion)(JNIEnv *env, struct wl_object *));
+void wl_jni_arguments_from_java_destroy(union wl_argument *args,
+        const char *signature, int count);
 
 void wl_jni_throw_OutOfMemoryError(JNIEnv * env, const char * message);
 void wl_jni_throw_NullPointerException(JNIEnv * env, const char * message);
 void wl_jni_throw_IllegalArgumentException(JNIEnv * env, const char * message);
 void wl_jni_throw_by_name(JNIEnv * env, const char *name, const char * message);
 void wl_jni_throw_from_errno(JNIEnv * env, int err);
+
+jint wl_jni_unbox_integer(JNIEnv *env, jobject integer);
 
 extern JavaVM * java_vm;
 

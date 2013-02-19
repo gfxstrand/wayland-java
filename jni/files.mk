@@ -19,9 +19,9 @@
 # OF THIS SOFTWARE.
 
 WAYLAND_JNI_UTIL_SRC := \
-	src/object.c \
 	src/interface.c \
 	src/fixed.c \
+	src/object.c \
 	src/wayland-jni.c
 
 WAYLAND_JNI_SERVER_SRC := $(WAYLAND_JNI_UTIL_SRC) \
