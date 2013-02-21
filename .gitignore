@@ -4,8 +4,8 @@ build
 android/bin/
 android/gen/
 android/obj/
-src/org/freedesktop/wayland/server/protocol
-jni/src/server/protocol.c
+src/org/freedesktop/wayland/protocol
 scanner/classes
 scanner/WaylandProtocolScanner.jar
+test/classes
 
