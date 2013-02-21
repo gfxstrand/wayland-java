@@ -51,8 +51,8 @@ OF THIS SOFTWARE.
             <sysproperty key="java.library.path" value="../build"/>
             <classpath refid="test.classpath" />
             <formatter type="brief" usefile="false" />
-            <test name="org.freedesktop.wayland.server.DisplayTest" />
             <test name="org.freedesktop.wayland.server.ResourceTest" />
+            <test name="org.freedesktop.wayland.ShmPoolTest" />
         </junit>
     </target>
 
