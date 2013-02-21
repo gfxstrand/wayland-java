@@ -261,6 +261,15 @@ wl_jni_throw_IllegalArgumentException(JNIEnv * env, const char * message)
 }
 
 void
+wl_jni_throw_IOException(JNIEnv * env, const char * message)
+{
+    if (wl_jni_ensure_object_cache(env) < 0)
+        return;
+
+    (*env)->ThrowNew(env, java.io.IOException.class, message);
+}
+
+void
 wl_jni_throw_by_name(JNIEnv * env, const char * name, const char * message)
 {
     jclass cls;
@@ -281,7 +290,8 @@ wl_jni_throw_from_errno(JNIEnv * env, int err)
         return;
     case EIO:
     case EBADF:
-        (*env)->ThrowNew(env, java.io.IOException.class, strerror(err));
+    case ENOENT:
+        wl_jni_throw_IOException(env, strerror(err));
         return;
     case ENOMEM:
         wl_jni_throw_OutOfMemoryError(env, NULL);

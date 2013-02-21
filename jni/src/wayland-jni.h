@@ -61,6 +61,7 @@ void wl_jni_arguments_from_java_destroy(union wl_argument *args,
 void wl_jni_throw_OutOfMemoryError(JNIEnv * env, const char * message);
 void wl_jni_throw_NullPointerException(JNIEnv * env, const char * message);
 void wl_jni_throw_IllegalArgumentException(JNIEnv * env, const char * message);
+void wl_jni_throw_IOException(JNIEnv * env, const char * message);
 void wl_jni_throw_by_name(JNIEnv * env, const char *name, const char * message);
 void wl_jni_throw_from_errno(JNIEnv * env, int err);
 
