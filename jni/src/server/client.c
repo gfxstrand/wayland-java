@@ -323,8 +323,10 @@ Java_org_freedesktop_wayland_server_Client_addResource(JNIEnv * env,
     if ((*env)->ExceptionCheck(env) == JNI_TRUE)
         return; /* Exception Thrown */
 
-    if (wl_client_add_resource(client, resource) < 0)
+    if (wl_client_add_resource(client, resource) < 0) {
+        wl_jni_resource_set_client(env, resource, NULL);
         wl_jni_throw_from_errno(env, errno);
+    }
 }
 
 JNIEXPORT jobject JNICALL
