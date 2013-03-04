@@ -305,6 +305,9 @@ handle_event_loop_idle_call(void * data)
 
     event_handler_destroy(env, handler);
 
+    if ((*env)->ExceptionCheck(env))
+        (*env)->ExceptionDescribe(env);
+
     // TODO: Handle Exceptions
 }
 

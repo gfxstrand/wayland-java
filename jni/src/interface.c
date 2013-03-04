@@ -45,44 +45,14 @@ static struct {
     } Message;
 } Interface;
 
-wl_interface_dispatcher_func_t wl_jni_resource_dispatcher;
-wl_interface_dispatcher_func_t wl_jni_proxy_dispatcher;
-
-struct wl_jni_interface
-{
-    struct wl_interface interface;
-    jmethodID *requests;
-    jmethodID *events;
-};
-
-struct wl_interface *
+struct wl_jni_interface *
 wl_jni_interface_from_java(JNIEnv * env, jobject jinterface)
 {
-    struct wl_jni_interface *jni_interface;
-
     if (jinterface == NULL)
         return NULL;
 
-    jni_interface = (struct wl_jni_interface *)(intptr_t)(*env)->GetLongField(
+    return (struct wl_jni_interface *)(intptr_t)(*env)->GetLongField(
             env, jinterface, Interface.interface_ptr);
-
-    return &jni_interface->interface;
-}
-
-void
-wl_jni_interface_init_object(JNIEnv * env, jobject jinterface,
-        struct wl_object * obj)
-{
-    if ((*env)->IsSameObject(env, jinterface, NULL) || obj == NULL)
-        return;
-
-    struct wl_jni_interface *jni_interface;
-    jni_interface = (struct wl_jni_interface *)(intptr_t)(*env)->GetLongField(
-            env, jinterface, Interface.interface_ptr);
-
-    obj->interface = &jni_interface->interface;
-    /* TODO: Handle events too */
-    obj->implementation = jni_interface->requests;
 }
 
 static void
@@ -128,7 +98,7 @@ get_native_message(JNIEnv * env, jobject jmsg, struct wl_message * msg)
         jobj = (*env)->GetObjectArrayElement(env, jarr, type);
         if ((*env)->ExceptionCheck(env) == JNI_TRUE) goto delete_types;
 
-        msg->types[type] = wl_jni_interface_from_java(env, jobj);
+        msg->types[type] = &wl_jni_interface_from_java(env, jobj)->interface;
         (*env)->DeleteLocalRef(env, jobj);
         if ((*env)->ExceptionCheck(env) == JNI_TRUE) goto delete_types;
     }
@@ -209,21 +179,6 @@ delete_name:
     return mid;
 }
 
-void
-method_dispatch_forward(struct wl_object *target, uint32_t opcode,
-        const struct wl_message *message, void *data, union wl_argument *args)
-{
-    (*wl_jni_resource_dispatcher)(target, opcode, message, data, args);
-}
-
-void
-event_dispatch_forward(struct wl_object *target, uint32_t opcode,
-        const struct wl_message *message, void *data, union wl_argument *args)
-{
-    (*wl_jni_proxy_dispatcher)(target, opcode, message, data, args);
-}
-
-
 JNIEXPORT void JNICALL
 Java_org_freedesktop_wayland_Interface_createNative(JNIEnv * env,
         jobject jinterface, jlong implementation_ptr)
@@ -241,6 +196,7 @@ Java_org_freedesktop_wayland_Interface_createNative(JNIEnv * env,
         wl_jni_throw_OutOfMemoryError(env, NULL);
         return;
     }
+    memset(jni_interface, 0, sizeof(*jni_interface));
 
     interface = &jni_interface->interface;
 
@@ -333,9 +289,6 @@ Java_org_freedesktop_wayland_Interface_createNative(JNIEnv * env,
     }
     (*env)->DeleteLocalRef(env, jarr);
 
-    interface->method_dispatcher = &method_dispatch_forward;
-    interface->event_dispatcher = &event_dispatch_forward;
-
     (*env)->SetLongField(env, jinterface, Interface.interface_ptr,
             (jlong)jni_interface);
     if ((*env)->ExceptionCheck(env))
@@ -369,36 +322,40 @@ JNIEXPORT void JNICALL
 Java_org_freedesktop_wayland_Interface_destroyNative(JNIEnv * env,
         jobject jinterface)
 {
-    struct wl_interface * interface;
+    struct wl_jni_interface * jni_interface;
     int i;
 
-    interface = wl_jni_interface_from_java(env, jinterface);
-    if ((*env)->ExceptionCheck(env) == JNI_TRUE || interface == NULL) {
+    jni_interface = wl_jni_interface_from_java(env, jinterface);
+    if ((*env)->ExceptionCheck(env) == JNI_TRUE || jni_interface == NULL) {
         return;
     }
 
     /* Free the events */
-    for (i = 0; i < interface->event_count; ++i) {
-        free((void *)interface->events[i].name);
-        free((void *)interface->events[i].signature);
-        free((void *)interface->events[i].types);
+    for (i = 0; i < jni_interface->interface.event_count; ++i) {
+        free((void *)jni_interface->interface.events[i].name);
+        free((void *)jni_interface->interface.events[i].signature);
+        free((void *)jni_interface->interface.events[i].types);
     }
-    free((void *)interface->events);
+    free((void *)jni_interface->interface.events);
 
     /* Free the methods */
-    for (i = 0; i < interface->method_count; ++i) {
-        free((void *)interface->methods[i].name);
-        free((void *)interface->methods[i].signature);
-        free((void *)interface->methods[i].types);
+    for (i = 0; i < jni_interface->interface.method_count; ++i) {
+        free((void *)jni_interface->interface.methods[i].name);
+        free((void *)jni_interface->interface.methods[i].signature);
+        free((void *)jni_interface->interface.methods[i].types);
     }
-    free((void *)interface->methods);
+    free((void *)jni_interface->interface.methods);
 
     /* Free the name */
-    if (interface->name != NULL)
-        free((void *)interface->name);
+    if (jni_interface->interface.name != NULL)
+        free((void *)jni_interface->interface.name);
+
+    /* Free the methodID arrays */
+    free(jni_interface->requests);
+    free(jni_interface->events);
 
     /* Free the actual interface */
-    free(interface);
+    free(jni_interface);
 
     (*env)->SetLongField(env, jinterface, Interface.interface_ptr, 0);
 }

@@ -71,6 +71,9 @@ struct wl_resource * wl_jni_resource_from_java(JNIEnv * env, jobject resource);
 jobject wl_jni_resource_to_java(JNIEnv * env, struct wl_resource * resource);
 void wl_jni_resource_set_client(JNIEnv * env, struct wl_resource * resource,
         struct wl_client * client);
+void wl_jni_resource_dispatcher(struct wl_object *target, uint32_t opcode,
+        const struct wl_message *message, void *client,
+        union wl_argument *args);
 
 struct wl_jni_listener {
     struct wl_listener listener;

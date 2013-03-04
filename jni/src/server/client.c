@@ -248,21 +248,23 @@ Java_org_freedesktop_wayland_server_Client_newObject(JNIEnv * env,
 {
     struct wl_client * client;
     struct wl_resource * resource;
-    struct wl_object tmp_obj;
+    struct wl_jni_interface *jni_interface;
     jobject jresource;
 
     client = wl_jni_client_from_java(env, jclient);
     if (client == NULL)
         return NULL; /* Exception Thrown */
 
-    wl_jni_interface_init_object(env, jiface, &tmp_obj);
+    jni_interface = wl_jni_interface_from_java(env, jiface);
     if ((*env)->ExceptionCheck(env) == JNI_TRUE)
         return NULL; /* Exception Thrown */
 
-    resource = wl_client_new_object(client, tmp_obj.interface,
-            tmp_obj.implementation, NULL);
-    if (resource == NULL)
+    resource = wl_client_new_object_d(client, &jni_interface->interface,
+            &wl_jni_resource_dispatcher, jni_interface->requests, NULL);
+    if (resource == NULL) {
+        wl_jni_throw_from_errno(env, errno);
         return NULL; /* Error */
+    }
 
     jresource = wl_jni_resource_create_from_native(env, resource, jdata);
     if (jresource == NULL) {
@@ -293,45 +295,13 @@ Java_org_freedesktop_wayland_server_Client_addDestroyListener(JNIEnv * env,
     wl_client_add_destroy_listener(client, &jni_listener->destroy_listener);
 }
 
-JNIEXPORT jobject JNICALL
-Java_org_freedesktop_wayland_server_Client_addObject(JNIEnv * env,
-        jobject jclient, jobject jiface, jint id, jobject jdata)
-{
-    struct wl_client * client;
-    struct wl_resource * resource;
-    struct wl_object tmp_obj;
-    jobject jresource;
-
-    client = wl_jni_client_from_java(env, jclient);
-    if (client == NULL)
-        return NULL; /* Exception Thrown */
-
-    wl_jni_interface_init_object(env, jiface, &tmp_obj);
-    if ((*env)->ExceptionCheck(env) == JNI_TRUE)
-        return NULL; /* Exception Thrown */
-
-    resource = wl_client_add_object(client, tmp_obj.interface,
-            tmp_obj.implementation, (uint32_t)id, NULL);
-    if (resource == NULL)
-        return NULL; /* Error */
-
-    jresource = wl_jni_resource_create_from_native(env, resource, jdata);
-    if (jresource == NULL) {
-        wl_resource_destroy(resource);
-        return NULL; /* Exception Thrown */
-    }
-
-    return jresource;
-}
-
-JNIEXPORT jint JNICALL
+JNIEXPORT void JNICALL
 Java_org_freedesktop_wayland_server_Client_addResource(JNIEnv * env,
         jobject jclient, jobject jresource)
 {
     /* TODO: Handle the case of already attached resources */
     struct wl_client * client;
     struct wl_resource * resource;
-    jobject global_ref;
 
     if (jresource == NULL) {
         wl_jni_throw_NullPointerException(env, NULL);
@@ -353,7 +323,8 @@ Java_org_freedesktop_wayland_server_Client_addResource(JNIEnv * env,
     if ((*env)->ExceptionCheck(env) == JNI_TRUE)
         return; /* Exception Thrown */
 
-    return (jint)wl_client_add_resource(client, resource);
+    if (wl_client_add_resource(client, resource) < 0)
+        wl_jni_throw_from_errno(env, errno);
 }
 
 JNIEXPORT jobject JNICALL

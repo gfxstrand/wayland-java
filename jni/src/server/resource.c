@@ -189,10 +189,11 @@ wl_jni_resource_create_from_native(JNIEnv * env, struct wl_resource * resource,
 }
 
 JNIEXPORT void JNICALL
-Java_org_freedesktop_wayland_server_Resource__1create(JNIEnv * env,
+Java_org_freedesktop_wayland_server_Resource__1create(JNIEnv *env,
         jobject jresource, jint id, jobject jiface)
 {
-    struct wl_resource * resource;
+    struct wl_resource *resource;
+    struct wl_jni_interface *jni_interface;
 
     resource = malloc(sizeof(struct wl_resource));
     if (resource == NULL) {
@@ -202,16 +203,17 @@ Java_org_freedesktop_wayland_server_Resource__1create(JNIEnv * env,
 
     memset(resource, 0, sizeof(struct wl_resource));
 
-    resource->object.id = (uint32_t)id;
-
-    resource->destroy = resource_destroy_func;
-    wl_signal_init(&resource->destroy_signal);
-
-    wl_jni_interface_init_object(env, jiface, &resource->object);
+    jni_interface = wl_jni_interface_from_java(env, jiface);
     if ((*env)->ExceptionCheck(env) == JNI_TRUE) {
         free(resource);
         return;
     }
+
+    wl_resource_init_d(resource, &jni_interface->interface,
+            &wl_jni_resource_dispatcher, jni_interface->requests, id, NULL);
+
+    resource->destroy = resource_destroy_func;
+    wl_signal_init(&resource->destroy_signal);
 
     (*env)->SetLongField(env, jresource, Resource.resource_ptr,
             (jlong)(intptr_t)resource);
@@ -423,8 +425,8 @@ unhandled_exception:
     return;
 }
 
-static void
-resource_dispatcher(struct wl_object *target, uint32_t opcode,
+void
+wl_jni_resource_dispatcher(struct wl_object *target, uint32_t opcode,
         const struct wl_message *message, void *client,
         union wl_argument *args)
 {
@@ -511,8 +513,6 @@ JNIEXPORT void JNICALL
 Java_org_freedesktop_wayland_server_Resource_initializeJNI(JNIEnv * env,
         jclass cls)
 {
-    wl_jni_resource_dispatcher = &resource_dispatcher;
-
     Resource.class = (*env)->NewGlobalRef(env, cls);
     if (Resource.class == NULL)
         return; /* Exception Thrown */

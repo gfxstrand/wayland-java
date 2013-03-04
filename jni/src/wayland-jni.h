@@ -41,10 +41,14 @@
 wl_fixed_t wl_jni_fixed_from_java(JNIEnv * env, jobject jobj);
 jobject wl_jni_fixed_to_java(JNIEnv * env, wl_fixed_t fixed);
 
-extern wl_interface_dispatcher_func_t wl_jni_resource_dispatcher;
-extern wl_interface_dispatcher_func_t wl_jni_proxy_dispatcher;
+struct wl_jni_interface
+{
+    struct wl_interface interface;
+    jmethodID *requests;
+    jmethodID *events;
+};
 
-struct wl_interface * wl_jni_interface_from_java(JNIEnv * env,
+struct wl_jni_interface * wl_jni_interface_from_java(JNIEnv * env,
         jobject jinterface);
 void wl_jni_interface_init_object(JNIEnv * env, jobject jinterface,
         struct wl_object * obj);
