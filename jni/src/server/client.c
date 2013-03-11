@@ -67,7 +67,8 @@ wl_jni_client_to_java(JNIEnv * env, struct wl_client * client)
 
 JNIEXPORT jobject JNICALL
 Java_org_freedesktop_wayland_server_Client_startClient(JNIEnv * env,
-        jclass cls, jobject jdisplay, jobject jfile, jarray jargs)
+        jclass cls, jobject jdisplay, jobject jfile, jarray jargs,
+        jboolean clearEnvironment)
 {
     jmethodID mid;
     jstring jexec_path, jarg;
@@ -141,9 +142,11 @@ Java_org_freedesktop_wayland_server_Client_startClient(JNIEnv * env,
         // Close the parent socket
         close(sockets[0]);
 
+        if (clearEnvironment)
+            clearenv();
+
         snprintf(fd_str, 16, "%d", sockets[1]);
         setenv("WAYLAND_SOCKET", fd_str, 1);
-        setenv("XDG_RUNTIME_DIR", "/data/data/net.jlekstrand.wayland/", 1);
 
         execv(exec_path, args);
         // This is bad
@@ -288,7 +291,7 @@ Java_org_freedesktop_wayland_server_Client_addDestroyListener(JNIEnv * env,
     if (jni_listener == NULL) {
         wl_jni_throw_NullPointerException(env,
                 "Listener not allowed to be null");
-        return;
+        return NULL;
     }
 
     wl_client_add_destroy_listener(client, &jni_listener->listener);

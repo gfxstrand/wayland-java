@@ -38,7 +38,13 @@ public class Client extends NativeObjectWrapper
     }
 
     public static native Client startClient(Display display, File executable,
-            String[] args);
+            String[] args, boolean clearEnvironment);
+
+    public static Client startClient(Display display, File executable,
+            String[] args)
+    {
+        return startClient(display, executable, args, false);
+    }
 
     private native void setNative(long client_ptr);
     private native void create(Display display, int fd);
