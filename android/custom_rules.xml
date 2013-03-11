@@ -35,7 +35,7 @@ OF THIS SOFTWARE.
             <arg value="clean" />
         </exec>
         <delete dir="${source.dir}/org/freedesktop/wayland/protocol" />
-        <ant dir="scanner" target="clean" />
+        <ant dir="../scanner" target="clean" />
     </target>
 </project>
 
