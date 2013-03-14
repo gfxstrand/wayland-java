@@ -62,6 +62,7 @@ public class Resource
      */
     private final native void _destroy();
 
+    public native Client getClient();
     public native void addDestroyListener(Listener listener);
     public native void destroy();
 

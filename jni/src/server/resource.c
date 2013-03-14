@@ -242,6 +242,14 @@ Java_org_freedesktop_wayland_server_Resource__1destroy(JNIEnv * env,
     free(resource);
 }
 
+JNIEXPORT jobject JNICALL
+Java_org_freedesktop_wayland_server_Resource_getClient(JNIEnv * env,
+        jobject jresource)
+{
+    return wl_jni_client_to_java(env,
+            wl_jni_resource_from_java(env, jresource)->client);
+}
+
 JNIEXPORT void JNICALL
 Java_org_freedesktop_wayland_server_Resource_addDestroyListener(JNIEnv * env,
         jobject jresource, jobject jlistener)
