@@ -91,7 +91,6 @@ class Interface
         writer.write("import java.lang.String;\n");
         writer.write("import org.freedesktop.wayland.Fixed;\n");
         writer.write("import org.freedesktop.wayland.Interface;\n");
-        writer.write("import org.freedesktop.wayland.server.Client;\n");
         writer.write("import org.freedesktop.wayland.server.Resource;\n");
         writer.write("import org.freedesktop.wayland.server.RequestError;\n");
         writer.write("\n");

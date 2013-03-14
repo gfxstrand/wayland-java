@@ -254,7 +254,7 @@ Java_org_freedesktop_wayland_Interface_createNative(JNIEnv * env,
         }
 
         jni_interface->requests[method] = get_java_method(env, jinterface,
-                jobj, "Lorg/freedesktop/wayland/server/Client;");
+                jobj, "Lorg/freedesktop/wayland/server/Resource;");
         (*env)->DeleteLocalRef(env, jobj);
         if ((*env)->ExceptionCheck(env))
             goto delete_methods;

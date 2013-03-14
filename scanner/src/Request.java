@@ -63,7 +63,7 @@ class Request
         if (description != null)
             description.writeJavaDoc(writer, "\t\t");
         writer.write("\t\tpublic abstract void " + name + "(");
-        writer.write("Client client");
+        writer.write("Resource resource");
 
         for (Argument arg : args) {
             writer.write(", ");

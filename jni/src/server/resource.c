@@ -480,7 +480,7 @@ wl_jni_resource_dispatcher(struct wl_object *target, uint32_t opcode,
         goto handle_exceptions; /* Exception Thrown */
     }
 
-    if ((*env)->PushLocalFrame(env, nrefs + 3) < 0)
+    if ((*env)->PushLocalFrame(env, nrefs + 2) < 0)
         goto handle_exceptions; /* Exception Thrown */
 
     jresource = wl_jni_resource_to_java(env, resource);
@@ -495,15 +495,13 @@ wl_jni_resource_dispatcher(struct wl_object *target, uint32_t opcode,
     if ((*env)->ExceptionCheck(env))
         goto pop_local_frame;
 
-    jargs[0].l = wl_jni_client_to_java(env, (struct wl_client *)client);
-    if (jargs[0].l == NULL)
-        goto pop_local_frame; /* Exception Thrown */
-
     wl_jni_arguments_to_java(env, args, jargs + 1, message->signature, nargs,
             (jobject(*)(JNIEnv *, struct wl_object *))&wl_jni_resource_to_java);
+
     if ((*env)->ExceptionCheck(env))
         goto pop_local_frame;
 
+    jargs[0].l = jresource;
     mid = ((jmethodID *)target->implementation)[opcode];
     (*env)->CallVoidMethodA(env, jimplementation, mid, jargs);
 
