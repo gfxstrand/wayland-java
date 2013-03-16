@@ -49,6 +49,12 @@ public class Resource
         _create(id, iface);
     }
 
+    public Object
+    getData()
+    {
+        return data;
+    }
+
     /**
      * Creates the native object.
      */

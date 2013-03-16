@@ -21,7 +21,7 @@
  */
 package org.freedesktop.wayland.server;
 
-class NativeObjectWrapper
+abstract class NativeObjectWrapper
 {
     private long data_ptr;
 
@@ -36,6 +36,18 @@ class NativeObjectWrapper
     }
 
     private native void destroyNative();
+
+    @Override
+    public int hashCode()
+    {
+        return (int)data_ptr;
+    }
+
+    @Override
+    public boolean equals(Object other)
+    {
+        return other == this;
+    }
 
     @Override
     protected void finalize() throws Throwable
