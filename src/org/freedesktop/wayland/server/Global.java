@@ -44,6 +44,20 @@ public class Global extends NativeObjectWrapper
         this.handler = handler;
     }
 
+    protected Global(Interface iface)
+    {
+        this.iface = iface;
+        this.handler = null;
+    }
+
+    public void bindClient(Client client, int version, int id)
+    {
+    	if (handler == null)
+            throw new IllegalStateException("Handler not set and bindClient not overridden");
+
+        handler.bindClient(client, version, id);
+    }
+
     private static native void initializeJNI();
 
     static {

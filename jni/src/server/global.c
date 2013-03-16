@@ -27,12 +27,7 @@
 struct {
     jclass class;
     jfieldID iface;
-    jfieldID handler;
-
-    struct {
-        jclass class;
-        jmethodID bindClient;
-    } BindHandler;
+    jmethodID bindClient;
 } Global;
 
 struct wl_global *
@@ -48,26 +43,25 @@ wl_jni_global_bind_func(struct wl_client * client, void * data,
 {
     JNIEnv * env;
     jobject jglobal;
-    jobject jhandler;
     jobject jclient;
 
     env = wl_jni_get_env();
 
     jglobal = (*env)->NewLocalRef(env, data);
     if (jglobal == NULL)
-        return;
-
-    jhandler = (*env)->GetObjectField(env, jglobal, Global.handler);
-    if (jhandler == NULL)
-        return;
+        goto exception;
 
     jclient = wl_jni_client_to_java(env, client);
+    if ((*env)->ExceptionCheck(env))
+        goto exception;
 
-    (*env)->CallVoidMethod(env, jhandler, Global.BindHandler.bindClient,
-            jclient, (jint)version, (jint)id);
+    (*env)->CallVoidMethod(env, jglobal, Global.bindClient, jclient,
+            (jint)version, (jint)id);
 
     (*env)->DeleteLocalRef(env, jglobal);
+    (*env)->DeleteLocalRef(env, jclient);
 
+exception:
     if ((*env)->ExceptionCheck(env))
         (*env)->ExceptionDescribe(env);
 }
@@ -77,7 +71,7 @@ wl_jni_global_add_to_display(JNIEnv *env, jobject jglobal,
         struct wl_display *display)
 {
     struct wl_jni_object_wrapper *wrapper;
-    struct wl_interface * interface;
+    struct wl_jni_interface * jni_interface;
     struct wl_global * global;
     jobject jinterface, self_ref;
 
@@ -85,7 +79,7 @@ wl_jni_global_add_to_display(JNIEnv *env, jobject jglobal,
     if ((*env)->ExceptionCheck(env))
         return; /* Exception Thrown */
 
-    interface = wl_jni_interface_from_java(env, jinterface);
+    jni_interface = wl_jni_interface_from_java(env, jinterface);
     if ((*env)->ExceptionCheck(env))
         return; /* Exception Thrown */
 
@@ -93,8 +87,8 @@ wl_jni_global_add_to_display(JNIEnv *env, jobject jglobal,
     if ((*env)->ExceptionCheck(env))
         return; /* Exception Thrown */
 
-    global = wl_display_add_global(display, interface, self_ref,
-            &wl_jni_global_bind_func);
+    global = wl_display_add_global(display, &jni_interface->interface,
+            self_ref, &wl_jni_global_bind_func);
 
     wl_jni_object_wrapper_set_data(env, jglobal, global);
     if ((*env)->ExceptionCheck(env)) {
@@ -147,25 +141,7 @@ Java_org_freedesktop_wayland_server_Global_initializeJNI(JNIEnv * env,
     if (Global.iface == NULL)
         return; /* Exception Thrown */
 
-    Global.handler = (*env)->GetFieldID(env, Global.class,
-            "handler", "Lorg/freedesktop/wayland/server/Global$BindHandler;");
-    if (Global.handler == NULL)
-        return; /* Exception Thrown */
-
-    cls = (*env)->FindClass(env,
-            "org/freedesktop/wayland/server/Global$BindHandler");
-    if (cls == NULL)
-        return; /* Exception Thrown */
-    Global.BindHandler.class = (*env)->NewGlobalRef(env, cls);
-    (*env)->DeleteLocalRef(env, cls);
-    if ((*env)->ExceptionCheck(env) == JNI_TRUE) {
-        wl_jni_throw_OutOfMemoryError(env, NULL);
-        return;
-    }
-    Global.BindHandler.bindClient = (*env)->GetMethodID(env,
-            Global.BindHandler.class, "bindClient",
+    Global.bindClient = (*env)->GetMethodID(env, Global.class, "bindClient",
             "(Lorg/freedesktop/wayland/server/Client;II)V");
-    if (Global.BindHandler.bindClient == NULL)
-        return; /* Exception Thrown */
 }
 
