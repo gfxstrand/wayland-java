@@ -59,7 +59,7 @@ public class Interface
                     writer.write("Ljava/lang/String;");
                     break;
                 case 'o':
-                    writer.write("L" + types[tpos].clazz.getName().replace('.', '/') + ";");
+                    writer.write("Lorg/freedesktop/wayland/server/Resource;");
                     break;
                 case 'n':
                     writer.write("I");

@@ -135,10 +135,7 @@ class Argument
         case STRING:
             return "String";
         case OBJECT:
-            if (ifaceName != null && ! ifaceName.isEmpty())
-                return Interface.toClassName(ifaceName) + ".Requests";
-            else
-                return "Resource";
+            return "Resource";
         case NEW_ID:
             return "int";
         case ARRAY:
@@ -186,8 +183,7 @@ class Argument
         case STRING:
             return "Ljava/lang/String;";
         case OBJECT:
-            return "L" + scanner.getJavaPackage().replaceAll("\\.", "/")
-                    + ifaceName + "$Requests;";
+            return "Lorg/freedesktop/wayland/server/Resource;";
         case NEW_ID:
             return "I";
         case ARRAY:
