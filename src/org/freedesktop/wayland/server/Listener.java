@@ -25,8 +25,7 @@ public abstract class Listener
 {
     private long listener_ptr;
 
-    public
-    Listener()
+    public Listener()
     {
         _create();
     }

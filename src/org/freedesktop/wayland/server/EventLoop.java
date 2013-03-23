@@ -60,7 +60,7 @@ public class EventLoop extends NativeObjectWrapper
         public abstract void handleIdle();
     }
 
-    private EventLoop(long native_ptr)
+    EventLoop(long native_ptr)
     {
         _create(native_ptr);
     }

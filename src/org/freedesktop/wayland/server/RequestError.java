@@ -23,7 +23,7 @@ package org.freedesktop.wayland.server;
 
 public class RequestError extends Error
 {
-    private int errorCode;
+    int errorCode;
 
     protected RequestError(String message, int errorCode)
     {

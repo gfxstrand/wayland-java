@@ -23,7 +23,7 @@ package org.freedesktop.wayland.server;
 
 abstract class NativeObjectWrapper
 {
-    private long data_ptr;
+    long data_ptr;
 
     protected NativeObjectWrapper()
     {
