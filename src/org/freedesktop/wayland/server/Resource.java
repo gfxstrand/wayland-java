@@ -23,9 +23,9 @@ package org.freedesktop.wayland.server;
 
 import org.freedesktop.wayland.Interface;
 
-public class Resource
+public final class Resource
 {
-    private long resource_ptr;
+    long resource_ptr;
     private Object data;
 
     // These are only temporaries to make addResource work
@@ -37,24 +37,6 @@ public class Resource
     {
         this.resource_ptr = resource_ptr;
         this.data = data;
-    }
-
-    public
-    Resource(Interface iface, int id, Object data)
-    {
-        this.resource_ptr = 0;
-        this.tmp_iface = iface;
-        this.tmp_id = id;
-        this.data = data;
-    }
-
-    protected
-    Resource(Interface iface, int id)
-    {
-        this.resource_ptr = 0;
-        this.tmp_iface = iface;
-        this.tmp_id = id;
-        this.data = this;
     }
 
     public Object

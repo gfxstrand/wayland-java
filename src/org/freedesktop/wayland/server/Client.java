@@ -27,7 +27,7 @@ import org.freedesktop.wayland.Interface;
 
 public class Client extends NativeObjectWrapper
 {
-    private Client(long client_ptr)
+    Client(long client_ptr)
     {
         setNative(client_ptr);
     }
@@ -49,7 +49,6 @@ public class Client extends NativeObjectWrapper
     private native void setNative(long client_ptr);
     private native void create(Display display, int fd);
     public native void flush();
-    public native void addResource(Resource resource);
     public native Resource addObject(Interface iface, int id, Object data);
     public native Resource newObject(Interface iface, Object data);
     public native void addDestroyListener(Listener listener);
