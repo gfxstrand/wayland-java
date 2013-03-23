@@ -33,7 +33,7 @@
 #else /* ! ANDROID */
 #include <stdio.h>
 
-#define LOG_DEBUG(...) printf(__VA_ARGS__)
+#define LOG_DEBUG(...) fprintf(stderr, __VA_ARGS__)
 #endif
 
 #include "wayland-util.h"
