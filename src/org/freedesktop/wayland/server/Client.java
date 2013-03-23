@@ -50,16 +50,9 @@ public class Client extends NativeObjectWrapper
     private native void create(Display display, int fd);
     public native void flush();
     public native void addResource(Resource resource);
-    public native void addDestroyListener(Listener listener);
-
-    public Resource addObject(Interface iface, int id, Object data)
-    {
-        Resource res = new Resource(iface, id, data);
-        addResource(res);
-        return res;
-    }
-
+    public native Resource addObject(Interface iface, int id, Object data);
     public native Resource newObject(Interface iface, Object data);
+    public native void addDestroyListener(Listener listener);
     public native Display getDisplay();
     public native void destroy();
 

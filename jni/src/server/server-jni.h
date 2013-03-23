@@ -67,12 +67,12 @@ jobject wl_jni_event_loop_create(JNIEnv * env, struct wl_event_loop *loop);
 
 jobject wl_jni_resource_create_from_native(JNIEnv * env,
         struct wl_resource * resource, jobject jdata);
+void wl_jni_resource_init_from_native(JNIEnv * env, jobject jresource,
+        struct wl_resource * resource);
 struct wl_resource * wl_jni_resource_from_java(JNIEnv * env, jobject resource);
 jobject wl_jni_resource_to_java(JNIEnv * env, struct wl_resource * resource);
-void wl_jni_resource_set_client(JNIEnv * env, struct wl_resource * resource,
-        struct wl_client * client);
-void wl_jni_resource_dispatcher(struct wl_object *target, uint32_t opcode,
-        const struct wl_message *message, void *client,
+void wl_jni_resource_dispatcher(const void *data, struct wl_object *target,
+        uint32_t opcode, const struct wl_message *message, void *client,
         union wl_argument *args);
 
 struct wl_jni_listener {

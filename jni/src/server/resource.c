@@ -22,33 +22,19 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
+#include <errno.h>
 
 #include <wayland-server.h>
 #include <wayland-util.h>
 
 #include "server-jni.h"
 
-/* NOTE ON RESOURCES AND GARBAGE COLLECTION:
- *
- * At all times the resources->data member will contain either a weak global or
- * a global reference to the java resource object. This way the reference is
- * always available from any thread. In order for garbage collection to work
- * properly the exact type of reference is determined as follows:
- *
- * If the resource is unattached, i.e. the resource->client member is NULL then
- * resources->data will hold a weak global reference.  This way it can be
- * garbage collected
- *
- * If the resource is attached, i.e. the resource->client member is not NULL
- * then resources->data will hold a global reference. In this way, it is
- * considered to be "owned" by the client to which it is attached and will not
- * be arbitrarily garbage-collected.
- */
-
 struct {
     jclass class;
     jfieldID resource_ptr;
     jfieldID data;
+    jfieldID tmp_iface;
+    jfieldID tmp_id;
     jmethodID init_long_obj;
     jmethodID destroy;
 } Resource;
@@ -91,57 +77,6 @@ wl_jni_resource_to_java(JNIEnv * env, struct wl_resource * resource)
     return (*env)->NewLocalRef(env, resource->data);
 }
 
-void
-wl_jni_resource_set_client(JNIEnv * env, struct wl_resource * resource,
-        struct wl_client * client)
-{
-    jobject local_ref, new_ref;
-
-    if (client == NULL && resource->client == NULL)
-        return;
-
-    local_ref = (*env)->NewLocalRef(env, resource->data);
-    if ((*env)->ExceptionCheck(env) == JNI_TRUE)
-        return; /* Exception Thrown */
-
-    // TODO: What if local_ref == NULL? Can this even happen?
-
-    if (client == NULL) {
-        /*
-         * We are unsetting the client. We already know that resource->data is
-         * not null.
-         */
-        new_ref = (*env)->NewWeakGlobalRef(env, local_ref);
-        if ((*env)->ExceptionCheck(env) == JNI_TRUE) {
-            (*env)->DeleteLocalRef(env, local_ref);
-            return; /* Exception Thrown */
-        }
-
-        (*env)->DeleteGlobalRef(env, resource->data);
-        resource->data = new_ref;
-        resource->client = NULL;
-    } else {
-        if (resource->client == NULL) {
-            /* We are setting the client */
-            new_ref = (*env)->NewGlobalRef(env, local_ref);
-            if ((*env)->ExceptionCheck(env) == JNI_TRUE) {
-                (*env)->DeleteLocalRef(env, local_ref);
-                return; /* Exception Thrown */
-            }
-
-            (*env)->DeleteWeakGlobalRef(env, resource->data);
-            resource->data = new_ref;
-            resource->client = client;
-            return;
-        } else {
-            /* This case is an error. */
-        }
-    }
-
-    /* Delete the local reference */
-    (*env)->DeleteLocalRef(env, local_ref);
-}
-
 static void
 resource_destroy_func(struct wl_resource * resource)
 {
@@ -150,12 +85,9 @@ resource_destroy_func(struct wl_resource * resource)
     if (resource == NULL)
         return;
 
-    /* This will ensure that we don't get a recursive call */
-    resource->destroy = NULL;
-
     env = wl_jni_get_env();
-
-    wl_jni_resource_set_client(env, resource, NULL);
+    (*env)->DeleteGlobalRef(env, resource->data);
+    free(resource);
 }
 
 jobject
@@ -171,14 +103,8 @@ wl_jni_resource_create_from_native(JNIEnv * env, struct wl_resource * resource,
     if (jresource == NULL)
         return NULL; /* Exception Thrown */
 
-    /* Set the apropreate type of pointer */
-    if (resource->client == NULL) {
-        resource->data = (*env)->NewWeakGlobalRef(env, jresource);
-    } else {
-        resource->data = (*env)->NewGlobalRef(env, jresource);
-    }
-
-    if ((*env)->ExceptionCheck(env) == JNI_TRUE) {
+    resource->data = (*env)->NewGlobalRef(env, jresource);
+    if (! resource->data) {
         (*env)->DeleteLocalRef(env, jresource);
         return NULL; /* Exception Thrown */
     }
@@ -188,66 +114,85 @@ wl_jni_resource_create_from_native(JNIEnv * env, struct wl_resource * resource,
     return jresource;
 }
 
-JNIEXPORT void JNICALL
-Java_org_freedesktop_wayland_server_Resource__1create(JNIEnv *env,
-        jobject jresource, jint id, jobject jiface)
+void
+wl_jni_resource_init_from_native(JNIEnv * env, jobject jresource,
+        struct wl_resource * resource)
 {
-    struct wl_resource *resource;
-    struct wl_jni_interface *jni_interface;
-
-    resource = malloc(sizeof(struct wl_resource));
-    if (resource == NULL) {
-        wl_jni_throw_OutOfMemoryError(env, NULL);
-        return;
-    }
-
-    memset(resource, 0, sizeof(struct wl_resource));
-
-    jni_interface = wl_jni_interface_from_java(env, jiface);
-    if ((*env)->ExceptionCheck(env) == JNI_TRUE) {
-        free(resource);
-        return;
-    }
-
-    wl_resource_init_d(resource, &jni_interface->interface,
-            &wl_jni_resource_dispatcher, jni_interface->requests, id, NULL);
-
-    resource->destroy = resource_destroy_func;
-    wl_signal_init(&resource->destroy_signal);
-
     (*env)->SetLongField(env, jresource, Resource.resource_ptr,
             (jlong)(intptr_t)resource);
-    if ((*env)->ExceptionCheck(env) == JNI_TRUE) {
-        free(resource);
+    if ((*env)->ExceptionCheck(env))
         return;
-    }
 
-    resource->data = (*env)->NewWeakGlobalRef(env, jresource);
-    if ((*env)->ExceptionCheck(env) == JNI_TRUE) {
-        free(resource);
-        return;
-    }
+    resource->data = (*env)->NewGlobalRef(env, jresource);
+    if (resource->data == NULL)
+        (*env)->SetLongField(env, jresource, Resource.resource_ptr, (jlong)0);
 }
 
 JNIEXPORT void JNICALL
-Java_org_freedesktop_wayland_server_Resource__1destroy(JNIEnv * env,
-        jobject jresource)
+Java_org_freedesktop_wayland_server_Client_addResource(JNIEnv * env,
+        jobject jclient, jobject jresource)
 {
+    struct wl_client * client;
     struct wl_resource * resource;
+    struct wl_jni_interface *jni_interface;
+    uint32_t id;
+    jobject jiface;
 
-    resource = wl_jni_resource_from_java(env, jresource);
-    if (resource == NULL)
+    client = wl_jni_client_from_java(env, jclient);
+    if (client == NULL)
+        return; /* Exception Thrown */
+
+    jiface = (*env)->GetObjectField(env, jresource, Resource.tmp_iface);
+    id = (*env)->GetIntField(env, jresource, Resource.tmp_id);
+    if ((*env)->ExceptionCheck(env))
+       return;
+
+    jni_interface = wl_jni_interface_from_java(env, jiface);
+    if ((*env)->ExceptionCheck(env) == JNI_TRUE)
+        return; /* Exception Thrown */
+
+    if (id == 0) {
+        resource = wl_client_new_dispatched_object(client,
+                &jni_interface->interface, &wl_jni_resource_dispatcher,
+                jni_interface->requests, NULL);
+    } else {
+        resource = wl_client_add_dispatched_object(client,
+                &jni_interface->interface, &wl_jni_resource_dispatcher,
+                jni_interface->requests, id, NULL);
+    }
+    if (resource == NULL) {
+        wl_jni_throw_from_errno(env, errno);
+        return; /* Error */
+    }
+
+    (*env)->SetLongField(env, jresource, Resource.resource_ptr,
+            (jlong)(intptr_t)resource);
+    if ((*env)->ExceptionCheck(env)) {
+        wl_resource_destroy(resource);
         return;
+    }
 
-    free(resource);
+    resource->data = (*env)->NewGlobalRef(env, jresource);
+    if (resource->data == NULL) {
+        wl_resource_destroy(resource);
+        (*env)->SetLongField(env, jresource, Resource.resource_ptr, (jlong)0);
+        return;
+    }
+
+    resource->destroy = resource_destroy_func;
 }
 
 JNIEXPORT jobject JNICALL
 Java_org_freedesktop_wayland_server_Resource_getClient(JNIEnv * env,
         jobject jresource)
 {
-    return wl_jni_client_to_java(env,
-            wl_jni_resource_from_java(env, jresource)->client);
+    struct wl_resource *resource;
+
+    resource = wl_jni_resource_from_java(env, jresource);
+    if (resource == NULL)
+        return NULL;
+
+    return wl_jni_client_to_java(env, resource->client);
 }
 
 JNIEXPORT void JNICALL
@@ -280,13 +225,9 @@ Java_org_freedesktop_wayland_server_Resource_destroy(JNIEnv * env,
     if (resource == NULL)
         return;
 
-    if (resource->client) {
-        /* This only works if it has been added to a client */
-        wl_resource_destroy(resource);
-    } else {
-        /* In this case we clean up ourselves */
-        wl_signal_emit(&resource->destroy_signal, resource);
-    }
+    wl_resource_destroy(resource);
+
+    (*env)->SetLongField(env, jresource, Resource.resource_ptr, (jlong)0);
 }
 
 JNIEXPORT void JNICALL
@@ -434,8 +375,8 @@ unhandled_exception:
 }
 
 void
-wl_jni_resource_dispatcher(struct wl_object *target, uint32_t opcode,
-        const struct wl_message *message, void *client,
+wl_jni_resource_dispatcher(const void * data, struct wl_object *target,
+        uint32_t opcode, const struct wl_message *message, void *client,
         union wl_argument *args)
 {
     struct wl_resource *resource;
@@ -486,7 +427,7 @@ wl_jni_resource_dispatcher(struct wl_object *target, uint32_t opcode,
     jresource = wl_jni_resource_to_java(env, resource);
     if ((*env)->ExceptionCheck(env)) {
         goto pop_local_frame;
-    } else if (resource == NULL) {
+    } else if (jresource == NULL) {
         wl_jni_throw_NullPointerException(env, "Resource should not be null");
         goto pop_local_frame;
     }
@@ -502,7 +443,7 @@ wl_jni_resource_dispatcher(struct wl_object *target, uint32_t opcode,
         goto pop_local_frame;
 
     jargs[0].l = jresource;
-    mid = ((jmethodID *)target->implementation)[opcode];
+    mid = ((jmethodID *)data)[opcode];
     (*env)->CallVoidMethodA(env, jimplementation, mid, jargs);
 
 pop_local_frame:
@@ -531,6 +472,16 @@ Java_org_freedesktop_wayland_server_Resource_initializeJNI(JNIEnv * env,
     Resource.data = (*env)->GetFieldID(env, Resource.class,
             "data", "Ljava/lang/Object;");
     if (Resource.data == NULL)
+        return; /* Exception Thrown */
+
+    Resource.tmp_iface = (*env)->GetFieldID(env, Resource.class,
+            "tmp_iface", "Lorg/freedesktop/wayland/Interface;");
+    if (Resource.tmp_iface == NULL)
+        return; /* Exception Thrown */
+
+    Resource.tmp_id = (*env)->GetFieldID(env, Resource.class,
+            "tmp_id", "I");
+    if (Resource.tmp_id == NULL)
         return; /* Exception Thrown */
 
     Resource.init_long_obj = (*env)->GetMethodID(env, Resource.class,

@@ -246,6 +246,40 @@ Java_org_freedesktop_wayland_server_Client_flush(JNIEnv * env, jobject jclient)
 }
 
 JNIEXPORT jobject JNICALL
+Java_org_freedesktop_wayland_server_Client_addObject(JNIEnv * env,
+        jobject jclient, jobject jiface, jint id, jobject jdata)
+{
+    struct wl_client * client;
+    struct wl_resource * resource;
+    struct wl_jni_interface *jni_interface;
+    jobject jresource;
+
+    client = wl_jni_client_from_java(env, jclient);
+    if (client == NULL)
+        return NULL; /* Exception Thrown */
+
+    jni_interface = wl_jni_interface_from_java(env, jiface);
+    if ((*env)->ExceptionCheck(env) == JNI_TRUE)
+        return NULL; /* Exception Thrown */
+
+    resource = wl_client_add_dispatched_object(client,
+            &jni_interface->interface, &wl_jni_resource_dispatcher,
+            jni_interface->requests, id, NULL);
+    if (resource == NULL) {
+        wl_jni_throw_from_errno(env, errno);
+        return NULL; /* Error */
+    }
+
+    jresource = wl_jni_resource_create_from_native(env, resource, jdata);
+    if (jresource == NULL) {
+        wl_resource_destroy(resource);
+        return NULL; /* Exception Thrown */
+    }
+
+    return jresource;
+}
+
+JNIEXPORT jobject JNICALL
 Java_org_freedesktop_wayland_server_Client_newObject(JNIEnv * env,
         jobject jclient, jobject jiface, jobject jdata)
 {
@@ -262,8 +296,9 @@ Java_org_freedesktop_wayland_server_Client_newObject(JNIEnv * env,
     if ((*env)->ExceptionCheck(env) == JNI_TRUE)
         return NULL; /* Exception Thrown */
 
-    resource = wl_client_new_object_d(client, &jni_interface->interface,
-            &wl_jni_resource_dispatcher, jni_interface->requests, NULL);
+    resource = wl_client_new_dispatched_object(client,
+            &jni_interface->interface, &wl_jni_resource_dispatcher,
+            jni_interface->requests, NULL);
     if (resource == NULL) {
         wl_jni_throw_from_errno(env, errno);
         return NULL; /* Error */
@@ -278,7 +313,7 @@ Java_org_freedesktop_wayland_server_Client_newObject(JNIEnv * env,
     return jresource;
 }
 
-JNIEXPORT jobject JNICALL
+JNIEXPORT void JNICALL
 Java_org_freedesktop_wayland_server_Client_addDestroyListener(JNIEnv * env,
         jobject jclient, jobject jlistener)
 {
@@ -291,45 +326,11 @@ Java_org_freedesktop_wayland_server_Client_addDestroyListener(JNIEnv * env,
     if (jni_listener == NULL) {
         wl_jni_throw_NullPointerException(env,
                 "Listener not allowed to be null");
-        return NULL;
+        return;
     }
 
     wl_client_add_destroy_listener(client, &jni_listener->listener);
     wl_client_add_destroy_listener(client, &jni_listener->destroy_listener);
-}
-
-JNIEXPORT void JNICALL
-Java_org_freedesktop_wayland_server_Client_addResource(JNIEnv * env,
-        jobject jclient, jobject jresource)
-{
-    /* TODO: Handle the case of already attached resources */
-    struct wl_client * client;
-    struct wl_resource * resource;
-
-    if (jresource == NULL) {
-        wl_jni_throw_NullPointerException(env, NULL);
-        return;
-    }
-
-    client = wl_jni_client_from_java(env, jclient);
-    resource = wl_jni_resource_from_java(env, jresource);
-    if (client == NULL || resource == NULL)
-        return; /* Exception Thrown */
-
-    /*
-     * This will handle making sure garbage collection happens properly. Notice
-     * that this function call is before wl_client_add_resource. This is
-     * because wl_client_add_resource will modify the client parameter of the
-     * resource and might break garbage collection
-     */
-    wl_jni_resource_set_client(env, resource, client);
-    if ((*env)->ExceptionCheck(env) == JNI_TRUE)
-        return; /* Exception Thrown */
-
-    if (wl_client_add_resource(client, resource) < 0) {
-        wl_jni_resource_set_client(env, resource, NULL);
-        wl_jni_throw_from_errno(env, errno);
-    }
 }
 
 JNIEXPORT jobject JNICALL

@@ -28,6 +28,10 @@ public class Resource
     private long resource_ptr;
     private Object data;
 
+    // These are only temporaries to make addResource work
+    private Interface tmp_iface;
+    private int tmp_id;
+
     private
     Resource(long resource_ptr, Object data)
     {
@@ -38,15 +42,19 @@ public class Resource
     public
     Resource(Interface iface, int id, Object data)
     {
+        this.resource_ptr = 0;
+        this.tmp_iface = iface;
+        this.tmp_id = id;
         this.data = data;
-        _create(id, iface);
     }
 
     protected
     Resource(Interface iface, int id)
     {
+        this.resource_ptr = 0;
+        this.tmp_iface = iface;
+        this.tmp_id = id;
         this.data = this;
-        _create(id, iface);
     }
 
     public Object
@@ -55,32 +63,12 @@ public class Resource
         return data;
     }
 
-    /**
-     * Creates the native object.
-     */
-    private final native void _create(int id, Interface iface);
-
-    /**
-     * Destroys the native object.
-     *
-     * This function only destroys the native object. It is NOT safe to call
-     * twice.
-     */
-    private final native void _destroy();
-
     public native Client getClient();
     public native void addDestroyListener(Listener listener);
     public native void destroy();
 
     public native void postEvent(int opcode, Object...args);
     public native void postError(int code, String msg);
-
-    @Override
-    public void finalize() throws Throwable
-    {
-        _destroy();
-        super.finalize();
-    }
 
     private static native void initializeJNI();
 
