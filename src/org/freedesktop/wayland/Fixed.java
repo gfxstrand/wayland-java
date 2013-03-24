@@ -25,9 +25,29 @@ public class Fixed
 {
     private int data;
 
-    private Fixed(int raw)
+    private Fixed(int raw, boolean dummyArgument)
     {
         this.data = raw;
+    }
+
+    public Fixed(int value)
+    {
+        this.data = value << 8;
+    }
+
+    public Fixed(float value)
+    {
+        this.data = (int)(value * 256 + 0.5);
+    }
+
+    public int asInt()
+    {
+        return this.data >> 8;
+    }
+
+    public float asFloat()
+    {
+        return (float)this.data / 256.0f;
     }
 
     static {
