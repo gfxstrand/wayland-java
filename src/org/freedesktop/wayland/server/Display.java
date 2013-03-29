@@ -22,7 +22,6 @@
 package org.freedesktop.wayland.server;
 
 import java.io.File;
-import java.util.LinkedList;
 
 import org.freedesktop.wayland.Interface;
 

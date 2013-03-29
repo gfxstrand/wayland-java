@@ -109,6 +109,16 @@ public class Interface
     private native void createNative(long implementation_ptr);
     private native void destroyNative();
 
+    public String getName()
+    {
+        return name;
+    }
+
+    public Class<?> getJavaClass()
+    {
+        return clazz;
+    }
+
     @Override
     public void finalize() throws Throwable
     {

@@ -162,7 +162,7 @@ free_args:
  */
 void
 wl_jni_arguments_to_java(JNIEnv *env, union wl_argument *args, jvalue *jargs,
-        const char *signature, int count,
+        const char *signature, int count, jboolean new_id_is_object,
         jobject (* object_conversion)(JNIEnv *env, struct wl_object *))
 {
     int i;
@@ -193,6 +193,11 @@ wl_jni_arguments_to_java(JNIEnv *env, union wl_argument *args, jvalue *jargs,
             if ((*env)->ExceptionCheck(env))
                 goto error;
             break;
+        case 'n':
+            if (! new_id_is_object) {
+                jargs[i].i = (jint)args[i].n;
+                break;
+            }
         case 'o':
             if (! arg.nullable && args[i].o == NULL) {
                 wl_jni_throw_NullPointerException(env, NULL);
@@ -202,9 +207,6 @@ wl_jni_arguments_to_java(JNIEnv *env, union wl_argument *args, jvalue *jargs,
             jargs[i].l = (*object_conversion)(env, args[i].o);
             if ((*env)->ExceptionCheck(env))
                 goto error;
-            break;
-        case 'n':
-            jargs[i].i = (jint)args[i].n;
             break;
         case 'a':
             jargs[i].l = (*env)->NewDirectByteBuffer(env,

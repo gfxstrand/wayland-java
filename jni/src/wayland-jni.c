@@ -70,6 +70,10 @@ static struct {
 
         struct {
             jclass class;
+        } IllegalStateException;
+
+        struct {
+            jclass class;
         } RuntimeException;
 
         struct {
@@ -142,6 +146,15 @@ wl_jni_ensure_object_cache(JNIEnv * env)
     java.lang.IllegalArgumentException.class = (*env)->NewGlobalRef(env, cls);
     (*env)->DeleteLocalRef(env, cls);
     if (java.lang.IllegalArgumentException.class == NULL) {
+        goto exception;
+    }
+    cls = NULL;
+
+    cls = (*env)->FindClass(env, "java/lang/IllegalStateException");
+    if (cls == NULL) goto exception;
+    java.lang.IllegalStateException.class = (*env)->NewGlobalRef(env, cls);
+    (*env)->DeleteLocalRef(env, cls);
+    if (java.lang.IllegalStateException.class == NULL) {
         goto exception;
     }
     cls = NULL;
@@ -258,6 +271,15 @@ wl_jni_throw_IllegalArgumentException(JNIEnv * env, const char * message)
         return;
 
     (*env)->ThrowNew(env, java.lang.IllegalArgumentException.class, message);
+}
+
+void
+wl_jni_throw_IllegalStateException(JNIEnv * env, const char * message)
+{
+    if (wl_jni_ensure_object_cache(env) < 0)
+        return;
+
+    (*env)->ThrowNew(env, java.lang.IllegalStateException.class, message);
 }
 
 void

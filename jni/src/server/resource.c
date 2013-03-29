@@ -369,6 +369,7 @@ wl_jni_resource_dispatcher(const void * data, struct wl_object *target,
         goto pop_local_frame;
 
     wl_jni_arguments_to_java(env, args, jargs + 1, message->signature, nargs,
+            JNI_FALSE,
             (jobject(*)(JNIEnv *, struct wl_object *))&wl_jni_resource_to_java);
 
     if ((*env)->ExceptionCheck(env))
