@@ -27,72 +27,49 @@ import java.io.IOException;
 import org.w3c.dom.Node;
 import org.w3c.dom.Element;
 
-class Request
+class Request extends Message
 {
-    private Interface iface;
-    private int id;
-    private String name;
-    private Description description;
-    private ArrayList<Argument> args;
-
     public Request(Interface iface, int id, Element xmlElem)
     {
-        this.iface = iface;
-        this.id = id;
-        args = new ArrayList<Argument>();
-
-        name = StringUtil.toLowerCamelCase(xmlElem.getAttribute("name"));
-
-        for (Node node = xmlElem.getFirstChild(); node != null;
-                node = node.getNextSibling()) {
-            if (node.getNodeType() != Node.ELEMENT_NODE)
-                continue;
-
-            Element child = (Element)node;
-            String tagName = child.getTagName().toLowerCase();
-            if (tagName.equals("description")) {
-                description = new Description(child);
-            } else if (tagName.equals("arg")) {
-                args.add(new Argument(child, iface.scanner));
-            }
-        }
+        super(iface, id, xmlElem);
     }
 
-    public void writeJavaServerMethod(Writer writer) throws IOException
+    @Override
+    public void writeInterfaceMethod(Writer writer) throws IOException
     {
         if (description != null)
             description.writeJavaDoc(writer, "\t\t");
-        writer.write("\t\tpublic abstract void " + name + "(");
-        writer.write("Resource resource");
+        writer.write("\t\tpublic abstract void ");
+        writer.write(StringUtil.toLowerCamelCase(name));
+        writer.write("(Resource resource");
 
         for (Argument arg : args) {
-            writer.write(", ");
-            arg.writeJavaDeclaration(writer);
+            writer.write(", " + arg.getJavaType("Resource") + " " + arg.name);
         }
 
         writer.write(");\n");
     }
 
-    public void writeJavaWaylandMessageInfo(Writer writer)
-            throws IOException
+    @Override
+    public void writePostMethod(Writer writer) throws IOException
     {
-        writer.write("\t\t\tnew Interface.Message(\"" + name + "\", ");
-        writer.write("\"");
+        if (description != null)
+            description.writeJavaDoc(writer, "\t");
+        writer.write("\tpublic static void ");
+        writer.write("post" + StringUtil.toUpperCamelCase(name) + "(");
+        writer.write("Proxy proxy");
+
         for (Argument arg : args) {
-            writer.write(arg.getWLPrototype());
+            writer.write(", " + arg.getJavaType("Proxy") + " " + arg.name);
         }
-        writer.write("\", new Interface[]{\n");
-        for (Argument arg : args) {
-            if (arg.type == Argument.Type.OBJECT && arg.ifaceName != null) {
-                writer.write("\t\t\t\t");
-                writer.write(arg.ifaceName + ".WAYLAND_INTERFACE");
-                writer.write(",\n");
-            } else {
-                writer.write("\t\t\t\t");
-                writer.write("null,\n");
-            }
-        }
-        writer.write("\t\t\t}),\n");
+
+        writer.write(")\n");
+        writer.write("\t{\n");
+        writer.write("\t\tproxy.marshal(" + id);
+        for (Argument arg : args)
+            writer.write(", " + arg.name);
+        writer.write(");\n");
+        writer.write("\t}\n");
     }
 }
 

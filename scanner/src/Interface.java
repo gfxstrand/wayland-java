@@ -36,8 +36,8 @@ class Interface
     private int version;
     private Description description;
     private ArrayList<Enum> enums;
-    private ArrayList<Request> requests;
-    private ArrayList<Event> events;
+    private ArrayList<Message> requests;
+    private ArrayList<Message> events;
 
     public String getName()
     {
@@ -54,8 +54,8 @@ class Interface
         this.scanner = scanner;
 
         enums = new ArrayList<Enum>();
-        requests = new ArrayList<Request>();
-        events = new ArrayList<Event>();
+        requests = new ArrayList<Message>();
+        events = new ArrayList<Message>();
 
         wl_name = xmlElem.getAttribute("name");
         name = toClassName(wl_name);
@@ -92,6 +92,7 @@ class Interface
         writer.write("import org.freedesktop.wayland.Fixed;\n");
         writer.write("import org.freedesktop.wayland.Interface;\n");
         writer.write("import org.freedesktop.wayland.server.Resource;\n");
+        writer.write("import org.freedesktop.wayland.client.Proxy;\n");
         writer.write("import org.freedesktop.wayland.server.RequestError;\n");
         writer.write("\n");
         
@@ -105,13 +106,13 @@ class Interface
         writer.write("\t\t\"" + wl_name + "\", ");
         writer.write(name + ".Requests.class, " + version + ",\n");
         writer.write("\t\tnew Interface.Message[]{\n");
-        for (Request request : requests) {
-            request.writeJavaWaylandMessageInfo(writer);
+        for (Message request : requests) {
+            request.writeMessageInfo(writer);
         }
         writer.write("\t\t},\n");
         writer.write("\t\tnew Interface.Message[]{\n");
-        for (Event event : events) {
-            event.writeJavaWaylandMessageInfo(writer);
+        for (Message event : events) {
+            event.writeMessageInfo(writer);
         }
         writer.write("\t\t}\n");
         writer.write("\t);\n");
@@ -124,15 +125,29 @@ class Interface
         writer.write("\n");
         writer.write("\tpublic interface Requests\n");
         writer.write("\t{");
-        for (Request request : requests) {
+        for (Message request : requests) {
             writer.write("\n");
-            request.writeJavaServerMethod(writer);
+            request.writeInterfaceMethod(writer);
         }
         writer.write("\t}\n");
 
-        for (Event event : events) {
+        writer.write("\n");
+        writer.write("\tpublic interface Events\n");
+        writer.write("\t{");
+        for (Message event : events) {
             writer.write("\n");
-            event.writeJavaServerMethod(writer);
+            event.writeInterfaceMethod(writer);
+        }
+        writer.write("\t}\n");
+
+        for (Message request : requests) {
+            writer.write("\n");
+            request.writePostMethod(writer);
+        }
+
+        for (Message event : events) {
+            writer.write("\n");
+            event.writePostMethod(writer);
         }
 
         writer.write("}\n");

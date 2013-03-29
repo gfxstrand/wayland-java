@@ -39,28 +39,30 @@ class Argument
         FD
     }
 
-    public String name;
-    public Type type;
-    public String ifaceName;
-    public boolean allowNull;
+    final String name;
+    final Type type;
+    final String ifaceName;
+    final boolean allowNull;
     private Scanner scanner;
 
     public Argument(Element xmlElem, Scanner scanner)
     {
         this.scanner = scanner;
-        name = xmlElem.getAttribute("name");
+        String tmpname = xmlElem.getAttribute("name");
 
         // Protect some java keywords
-        if (name.equals("class")) {
+        if (tmpname.equals("class")) {
             name = "clazz";
-        } else if (name.equals("interface")) {
+        } else if (tmpname.equals("interface")) {
             name = "iface";
-        } else if (name.equals("public")) {
+        } else if (tmpname.equals("public")) {
             name = "publik";
-        } else if (name.equals("abstract")) {
+        } else if (tmpname.equals("abstract")) {
             name = "abstrct";
-        } else if (name.equals("native")) {
+        } else if (tmpname.equals("native")) {
             name = "nativ";
+        } else {
+            name = tmpname;
         }
 
         String typeStr = xmlElem.getAttribute("type");
@@ -83,20 +85,16 @@ class Argument
         } else {
             throw new BuildException("Invalid type \"" + typeStr + "\"");
         }
-        ifaceName = xmlElem.getAttribute("interface");
-        if (ifaceName.isEmpty())
+
+        tmpname = xmlElem.getAttribute("interface");
+        if (tmpname.isEmpty())
             ifaceName = null;
         else
-            ifaceName = Interface.toClassName(ifaceName);
+            ifaceName = Interface.toClassName(tmpname);
 
         String nullstr = xmlElem.getAttribute("allow-null").toLowerCase();
         allowNull = nullstr.equals("true") || nullstr.equals("yes")
                 || nullstr.equals("1");
-    }
-
-    public String getName()
-    {
-        return name;
     }
 
     public String getCType()
@@ -123,7 +121,7 @@ class Argument
         }
     }
 
-    public String getJavaType()
+    public String getJavaType(String objectType)
     {
         switch (type) {
         case INT:
@@ -135,7 +133,7 @@ class Argument
         case STRING:
             return "String";
         case OBJECT:
-            return "Resource";
+            return objectType;
         case NEW_ID:
             return "int";
         case ARRAY:
@@ -193,11 +191,6 @@ class Argument
         default:
             return null;
         }
-    }
-
-    public void writeJavaDeclaration(Writer writer) throws IOException
-    {
-        writer.write(getJavaType() + " " + name);
     }
 }
 
