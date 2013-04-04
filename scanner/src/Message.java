@@ -64,6 +64,8 @@ abstract class Message
         writer.write(StringUtil.toLowerCamelCase(name) + "\", ");
         writer.write("\"");
         for (Argument arg : args) {
+            if (arg.type == Argument.Type.NEW_ID && arg.ifaceName == null)
+                writer.write("su");
             writer.write(arg.getWLPrototype());
         }
         writer.write("\", new Interface[]{\n");
