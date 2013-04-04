@@ -1,5 +1,8 @@
 package org.freedesktop.wayland.client;
 
+import java.lang.Class;
+import java.lang.reflect.Constructor;
+
 import org.freedesktop.wayland.Interface;
 
 public class Proxy
@@ -9,10 +12,32 @@ public class Proxy
     private Object listener;
     private Interface iface;
 
-    public Proxy(Proxy factory, Interface iface)
+    protected Proxy(Proxy factory, Interface iface)
     {
         this.iface = iface;
         createNative(factory, iface);
+    }
+
+    public static Proxy create(Proxy factory, Interface iface)
+            throws ClassNotFoundException, NoSuchMethodException,
+                   InstantiationException, IllegalAccessException,
+                   java.lang.reflect.InvocationTargetException
+    {
+        Class<?> proxyClass = null;
+        Class<?>[] classes = iface.getJavaClass().getClasses();
+        for (Class<?> cls : classes) {
+            if (cls.getSimpleName() == "Proxy") {
+                proxyClass = cls;
+                break;
+            }
+        }
+        
+        if (proxyClass == null)
+            throw new ClassNotFoundException("Could not find "
+                    + iface.getName() + ".Proxy");
+
+        Constructor<?> ctor = proxyClass.getConstructor(Proxy.class);
+        return (Proxy)ctor.newInstance(factory);
     }
 
     private native void createNative(Proxy factory, Interface iface);

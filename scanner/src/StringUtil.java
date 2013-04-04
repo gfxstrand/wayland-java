@@ -19,6 +19,7 @@
  * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE
  * OF THIS SOFTWARE.
  */
+import java.io.Writer;
 import java.io.StringWriter;
 
 class StringUtil

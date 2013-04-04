@@ -92,7 +92,6 @@ class Interface
         writer.write("import org.freedesktop.wayland.Fixed;\n");
         writer.write("import org.freedesktop.wayland.Interface;\n");
         writer.write("import org.freedesktop.wayland.server.Resource;\n");
-        writer.write("import org.freedesktop.wayland.client.Proxy;\n");
         writer.write("import org.freedesktop.wayland.server.RequestError;\n");
         writer.write("\n");
         
@@ -140,10 +139,22 @@ class Interface
         }
         writer.write("\t}\n");
 
+        writer.write("\n");
+        writer.write("\tpublic static class Proxy");
+        writer.write(" extends org.freedesktop.wayland.client.Proxy\n");
+        writer.write("\t{\n");
+
+        writer.write("\t\tpublic Proxy(");
+        writer.write("org.freedesktop.wayland.client.Proxy factory)\n");
+        writer.write("\t\t{\n");
+        writer.write("\t\t\tsuper(factory, WAYLAND_INTERFACE);\n");
+        writer.write("\t\t}\n");
+
         for (Message request : requests) {
             writer.write("\n");
             request.writePostMethod(writer);
         }
+        writer.write("\t}\n");
 
         for (Message event : events) {
             writer.write("\n");
