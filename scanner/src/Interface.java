@@ -144,10 +144,21 @@ class Interface
         writer.write(" extends org.freedesktop.wayland.client.Proxy\n");
         writer.write("\t{\n");
 
-        writer.write("\t\tpublic Proxy(");
+        if (name.equals("wl_display"))
+            // wl_display is special.  We need to create it throug Display
+            writer.write("\t\tprotected Proxy(");
+        else
+            writer.write("\t\tpublic Proxy(");
+
         writer.write("org.freedesktop.wayland.client.Proxy factory)\n");
         writer.write("\t\t{\n");
         writer.write("\t\t\tsuper(factory, WAYLAND_INTERFACE);\n");
+        writer.write("\t\t}\n");
+
+        writer.write("\n");
+        writer.write("\t\tpublic void addListener(Events listener, Object data)\n");
+        writer.write("\t\t{\n");
+        writer.write("\t\t\tsuper.addListener(listener, data);\n");
         writer.write("\t\t}\n");
 
         for (Message request : requests) {

@@ -1,18 +1,25 @@
 package org.freedesktop.wayland.client;
 
-public class Display
-{
-    long display_ptr;
+import org.freedesktop.wayland.protocol.wl_display;
 
+public class Display extends wl_display.Proxy
+{
     Display(long native_ptr)
     {
-        this.display_ptr = native_ptr;
+        super(null);
+        ((Proxy)this).proxy_ptr = native_ptr;
     }
 
     public native static Display connect(String name);
     public native static Display connect(int fd);
 
-    public native void disconnect();
+    public native void disconnectNative();
+    public void disconnect()
+    {
+        disconnectNative();
+        ((Proxy)this).proxy_ptr = 0;
+    }
+
     public native int getFD();
     public native int dispatch();
     public native int dispatchPending();
@@ -20,11 +27,5 @@ public class Display
     public native int dispatchQueuePending(EventQueue queue);
     public native int flush();
     public native int roundtrip();
-
-    private static native void initializeJNI();
-    static {
-        System.loadLibrary("wayland-java-client");
-        initializeJNI();
-    }
 }
 
