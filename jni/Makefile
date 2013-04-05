@@ -35,8 +35,10 @@ WAYLAND_CLIENT_LDFLAGS := $(shell pkg-config --libs wayland-client)
 
 SERVER_OBJECTS := $(foreach file, $(WAYLAND_JNI_SERVER_SRC), \
 		$(patsubst src/%.c, $(OBJECT_DIR)/%.o, $(file)))
-SERVER_OBJECTS := $(foreach file, $(WAYLAND_JNI_CLIENT_SRC), \
+CLIENT_OBJECTS := $(foreach file, $(WAYLAND_JNI_CLIENT_SRC), \
 		$(patsubst src/%.c, $(OBJECT_DIR)/%.o, $(file)))
+
+all: $(BUILD_DIR)/libwayland-java-server.so $(BUILD_DIR)/libwayland-java-client.so
 
 $(OBJECT_DIR)%.o: src/%.c
 	mkdir -p $(dir $@)
@@ -50,8 +52,7 @@ $(BUILD_DIR)/libwayland-java-client.so: $(CLIENT_OBJECTS)
 
 .PHONY: clean
 clean:
-	rm -r $(OBJECT_DIR)
-	rm $(BUILD_DIR)/libwayland-java-server.so
-
-all: $(BUILD_DIR)/libwayland-java-server.so
+	rm -rf $(OBJECT_DIR)
+	rm -f $(BUILD_DIR)/libwayland-java-server.so
+	rm -f $(BUILD_DIR)/libwayland-java-client.so
 
