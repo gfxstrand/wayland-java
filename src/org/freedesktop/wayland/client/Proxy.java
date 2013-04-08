@@ -15,6 +15,9 @@ public class Proxy
 
     protected Proxy(Proxy factory, Interface iface)
     {
+        this.proxy_ptr = 0;
+        this.userData= null;
+        this.listener = null;
         this.iface = iface;
 
         // Creating a wl_display proxy is a special case.  The actual display
@@ -25,22 +28,11 @@ public class Proxy
     }
 
     public static Proxy create(Proxy factory, Interface iface)
-            throws ClassNotFoundException, NoSuchMethodException,
-                   InstantiationException, IllegalAccessException,
+            throws NoSuchMethodException, InstantiationException,
+                   IllegalAccessException,
                    java.lang.reflect.InvocationTargetException
     {
-        Class<?> proxyClass = null;
-        Class<?>[] classes = iface.getJavaClass().getClasses();
-        for (Class<?> cls : classes) {
-            if (cls.getSimpleName() == "Proxy") {
-                proxyClass = cls;
-                break;
-            }
-        }
-        
-        if (proxyClass == null)
-            throw new ClassNotFoundException("Could not find "
-                    + iface.getName() + ".Proxy");
+        Class<?> proxyClass = iface.getProxyClass();
 
         Constructor<?> ctor = proxyClass.getConstructor(Proxy.class);
         return (Proxy)ctor.newInstance(factory);
@@ -53,12 +45,8 @@ public class Proxy
 
     protected void addListener(Object listener, Object userData)
     {
-        if (listener != null)
+        if (this.listener != null)
             throw new IllegalStateException("listener already set");
-
-        if (iface.getJavaClass().isInstance(listener))
-            throw new ClassCastException("listener does not implement "
-                    + iface.getJavaClass().getName());
 
         this.listener = listener;
         this.userData = userData;
@@ -85,6 +73,7 @@ public class Proxy
 
     private static native void initializeJNI();
     static {
+        System.loadLibrary("wayland-java-util");
         System.loadLibrary("wayland-java-client");
         initializeJNI();
     }

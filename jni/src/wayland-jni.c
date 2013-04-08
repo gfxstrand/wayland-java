@@ -306,6 +306,14 @@ wl_jni_throw_by_name(JNIEnv * env, const char * name, const char * message)
 void
 wl_jni_throw_from_errno(JNIEnv * env, int err)
 {
+    if (err == ENOMEM) {
+        wl_jni_throw_OutOfMemoryError(env, NULL);
+        return;
+    }
+
+    if (wl_jni_ensure_object_cache(env) < 0)
+        return;
+
     switch (err) {
     case EINVAL:
         wl_jni_throw_IllegalArgumentException(env, strerror(err));
@@ -314,9 +322,6 @@ wl_jni_throw_from_errno(JNIEnv * env, int err)
     case EBADF:
     case ENOENT:
         wl_jni_throw_IOException(env, strerror(err));
-        return;
-    case ENOMEM:
-        wl_jni_throw_OutOfMemoryError(env, NULL);
         return;
     default:
         (*env)->ThrowNew(env, java.lang.RuntimeException.class, strerror(err));
@@ -598,7 +603,8 @@ JNI_OnLoad(JavaVM *vm, void *reserved)
     pthread_mutex_init(&object_cache_mutex, NULL);
 
     /* Initialized the cached objects list */
-    wl_list_init(&ptr_jobject_list);
+    ptr_jobject_list.next = &ptr_jobject_list;
+    ptr_jobject_list.prev = &ptr_jobject_list;
 
     return JNI_VERSION_1_2;
 }

@@ -27,5 +27,10 @@ public class Display extends wl_display.Proxy
     public native int dispatchQueuePending(EventQueue queue);
     public native int flush();
     public native int roundtrip();
+
+    static {
+        System.loadLibrary("wayland-java-util");
+        System.loadLibrary("wayland-java-client");
+    }
 }
 

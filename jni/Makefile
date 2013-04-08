@@ -30,9 +30,13 @@ WAYLAND_CFLAGS := $(CFLAGS) $(shell pkg-config --cflags wayland-server wayland-e
 CFLAGS := -g -fPIC $(WAYLAND_JNI_CFLAGS) $(WAYLAND_CFLAGS) $(JNI_CFLAGS)
 CFLAGS += $(foreach file, $(WAYLAND_JNI_C_INCLUDES), -I$(file))
 
-WAYLAND_SERVER_LDFLAGS := $(shell pkg-config --libs wayland-server)
-WAYLAND_CLIENT_LDFLAGS := $(shell pkg-config --libs wayland-client)
+SERVER_LDFLAGS := $(shell pkg-config --libs wayland-server)
+SERVER_LDFLAGS += -L$(BUILD_DIR) -lwayland-java-util
+CLIENT_LDFLAGS := $(shell pkg-config --libs wayland-client)
+CLIENT_LDFLAGS += -L$(BUILD_DIR) -lwayland-java-util
 
+UTIL_OBJECTS := $(foreach file, $(WAYLAND_JNI_UTIL_SRC), \
+		$(patsubst src/%.c, $(OBJECT_DIR)/%.o, $(file)))
 SERVER_OBJECTS := $(foreach file, $(WAYLAND_JNI_SERVER_SRC), \
 		$(patsubst src/%.c, $(OBJECT_DIR)/%.o, $(file)))
 CLIENT_OBJECTS := $(foreach file, $(WAYLAND_JNI_CLIENT_SRC), \
@@ -44,11 +48,18 @@ $(OBJECT_DIR)%.o: src/%.c
 	mkdir -p $(dir $@)
 	gcc $(CFLAGS) -c $< -o $@
 
+$(BUILD_DIR)/libwayland-java-util.so: $(UTIL_OBJECTS)
+	gcc -shared -o $@ $^ $(UTIL_LDFLAGS)
+
+$(BUILD_DIR)/libwayland-java-server.so: $(BUILD_DIR)/libwayland-java-util.so
+
 $(BUILD_DIR)/libwayland-java-server.so: $(SERVER_OBJECTS)
-	gcc -shared -o $@ $^ $(WAYLAND_SERVER_LDFLAGS)
+	gcc -shared -o $@ $^ $(SERVER_LDFLAGS)
+
+$(BUILD_DIR)/libwayland-java-client.so: $(BUILD_DIR)/libwayland-java-util.so
 
 $(BUILD_DIR)/libwayland-java-client.so: $(CLIENT_OBJECTS)
-	gcc -shared -o $@ $^ $(WAYLAND_CLIENT_LDFLAGS)
+	gcc -shared -o $@ $^ $(CLIENT_LDFLAGS)
 
 .PHONY: clean
 clean:

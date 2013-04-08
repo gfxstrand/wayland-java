@@ -25,7 +25,7 @@ WAYLAND_JNI_UTIL_SRC := \
 	src/shm_pool.c \
 	src/wayland-jni.c
 
-WAYLAND_JNI_SERVER_SRC := $(WAYLAND_JNI_UTIL_SRC) \
+WAYLAND_JNI_SERVER_SRC := \
 	src/server/native_object_wrapper.c \
 	src/server/display.c \
 	src/server/global.c \
@@ -34,7 +34,7 @@ WAYLAND_JNI_SERVER_SRC := $(WAYLAND_JNI_UTIL_SRC) \
 	src/server/resource.c \
 	src/server/listener.c
 
-WAYLAND_JNI_CLIENT_SRC := $(WAYLAND_JNI_UTIL_SRC) \
+WAYLAND_JNI_CLIENT_SRC := \
 	src/client/display.c \
 	src/client/proxy.c \
 	src/client/event_queue.c

@@ -195,9 +195,13 @@ wl_jni_arguments_to_java(JNIEnv *env, union wl_argument *args, jvalue *jargs,
             break;
         case 'n':
             if (! new_id_is_object) {
+                jargs[i].l = (*object_conversion)(env, args[i].o);
+                if ((*env)->ExceptionCheck(env))
+                    goto error;
+            } else {
                 jargs[i].i = (jint)args[i].n;
-                break;
             }
+            break;
         case 'o':
             if (! arg.nullable && args[i].o == NULL) {
                 wl_jni_throw_NullPointerException(env, NULL);

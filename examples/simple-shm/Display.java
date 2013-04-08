@@ -23,15 +23,15 @@ public class Display
             public void global(wl_registry.Proxy registry, int name,
                     String iface, int version)
             {
-                if (iface == "wl_compositor")
+                if ("wl_compositor".equals(iface)) {
                     compositor = (wl_compositor.Proxy)registry.bind(name,
                             wl_compositor.WAYLAND_INTERFACE, 1);
-                else if (iface == "wl_shell")
+                } else if ("wl_shell".equals(iface)) {
                     shell = (wl_shell.Proxy)registry.bind(name,
                             wl_shell.WAYLAND_INTERFACE, 1);
-                else if (iface == "wl_shm")
+                } else if ("wl_shm".equals(iface)) {
                     shm = (wl_shm.Proxy)registry.bind(name,
-                            wl_shell.WAYLAND_INTERFACE, 1);
+                            wl_shm.WAYLAND_INTERFACE, 1);
 
                     shm.addListener(new wl_shm.Events() {
                         @Override
@@ -40,6 +40,7 @@ public class Display
                             shm_formats |= (1 << format);
                         }
                     }, null);
+                }
             }
 
             @Override

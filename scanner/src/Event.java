@@ -44,7 +44,7 @@ class Event extends Message
         writer.write("(Proxy proxy");
 
         for (Argument arg : args) {
-            writer.write(", " + arg.getJavaType("Proxy") + " " + arg.name);
+            writer.write(", " + arg.getJavaType("org.freedesktop.wayland.client.Proxy") + " " + arg.name);
         }
 
         writer.write(");\n");

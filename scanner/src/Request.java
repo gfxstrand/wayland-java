@@ -45,6 +45,9 @@ class Request extends Message
         writer.write("(Resource resource");
 
         for (Argument arg : args) {
+            if (arg.type == Argument.Type.NEW_ID && arg.ifaceName == null) {
+                writer.write(", String ifaceName, int version");
+            }
             writer.write(", " + arg.getJavaType("Resource") + " " + arg.name);
         }
 

@@ -29,7 +29,6 @@ public class Interface
     {
         private final String name;
         private final String signature;
-        private final String javaSignature;
         private final Interface[] types;
 
         public Message(String name, String signature, Interface[] types)
@@ -37,76 +36,34 @@ public class Interface
             this.name = name;
             this.signature = signature;
             this.types = types;
-
-            StringWriter writer = new StringWriter();
-
-            int tpos = 0;
-            for (int spos = 0; spos < signature.length(); ++spos) {
-                switch(signature.charAt(spos)) {
-                case '?':
-                    // Skip '?' characters
-                    continue;
-                case 'i':
-                    writer.write("I");
-                    break;
-                case 'u':
-                    writer.write("I");
-                    break;
-                case 'f':
-                    writer.write("Lorg/freedesktop/wayland/Fixed;");
-                    break;
-                case 's':
-                    writer.write("Ljava/lang/String;");
-                    break;
-                case 'o':
-                    writer.write("Lorg/freedesktop/wayland/server/Resource;");
-                    break;
-                case 'n':
-                    writer.write("I");
-                    break;
-                case 'a':
-                    writer.write("Ljava.lang.ByteBuffer;");
-                    break;
-                case 'h':
-                    writer.write("I");
-                    break;
-                default:
-                    throw new IllegalArgumentException("Invalid signature");
-                }
-                ++tpos;
-            }
-
-            this.javaSignature = writer.toString();
         }
     }
 
-    private String name;
-    private Class<?> clazz;
-    private int version;
-    private Message[] requests;
-    private Message[] events;
     private long interface_ptr;
 
-    public Interface(String name, Class<?> clazz, int version,
-            Message[] requests, Message[] events)
-    {
-        this(name, clazz, version, requests, events, 0);
-    }
+    private String name;
+    private int version;
+    private Message[] requests;
+    private Class<?> requestsIface;
+    private Message[] events;
+    private Class<?> eventsIface;
+    private Class<?> proxyClass;
 
-    public Interface(String name, Class<?> clazz, int version,  
-            Message[] requests, Message[] events, long implementation_ptr)
+    public Interface(String name, int version, Message[] requests,
+            Class<?> requestsIface, Message[] events, Class<?> eventsIface,
+            Class<?> proxyClass)
     {
-        this.name = name;
-        this.clazz = clazz;
-        this.version = version;
-        this.requests = requests;
-        this.events = events;
         this.interface_ptr = 0;
 
-        createNative(implementation_ptr);
+        this.name = name;
+        this.version = version;
+        this.requests = requests;
+        this.requestsIface = requestsIface;
+        this.events = events;
+        this.eventsIface = eventsIface;
+        this.proxyClass = proxyClass;
     }
 
-    private native void createNative(long implementation_ptr);
     private native void destroyNative();
 
     public String getName()
@@ -114,22 +71,23 @@ public class Interface
         return name;
     }
 
-    public Class<?> getJavaClass()
+    public Class<?> getProxyClass()
     {
-        return clazz;
+        return proxyClass;
     }
 
     @Override
     public void finalize() throws Throwable
     {
-        destroyNative();
+        if (interface_ptr != 0)
+            destroyNative();
         super.finalize();
     }
 
     private static native void initializeJNI();
     static {
-        System.loadLibrary("wayland-java-server");
         initializeJNI();
+        System.loadLibrary("wayland-java-util");
     }
 }
 

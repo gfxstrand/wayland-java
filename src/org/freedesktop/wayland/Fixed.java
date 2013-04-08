@@ -51,7 +51,7 @@ public class Fixed
     }
 
     static {
-        System.loadLibrary("wayland-java-server");
+        System.loadLibrary("wayland-java-util");
     }
 }
 

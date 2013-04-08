@@ -103,17 +103,18 @@ class Interface
         writer.write("\tpublic static final Interface WAYLAND_INTERFACE = ");
         writer.write("new Interface(\n");
         writer.write("\t\t\"" + wl_name + "\", ");
-        writer.write(name + ".Requests.class, " + version + ",\n");
+        writer.write(version + ",\n");
         writer.write("\t\tnew Interface.Message[]{\n");
         for (Message request : requests) {
             request.writeMessageInfo(writer);
         }
-        writer.write("\t\t},\n");
+        writer.write("\t\t}, Requests.class, \n");
         writer.write("\t\tnew Interface.Message[]{\n");
         for (Message event : events) {
             event.writeMessageInfo(writer);
         }
-        writer.write("\t\t}\n");
+        writer.write("\t\t}, Events.class, \n");
+        writer.write("\t\tProxy.class\n");
         writer.write("\t);\n");
 
         for (Enum enm : enums) {

@@ -40,10 +40,18 @@ OF THIS SOFTWARE.
                 includeantruntime="false">
             <classpath refid="examples.classpath" />
         </javac>
+        <jar destfile="SimpleShm.jar" basedir="${classes.dir}/simple-shm">
+            <zipfileset includes="**/*.class" src="../wayland-java.jar" />
+            <manifest>
+                <attribute name="Created-By" value="Jason Ekstrand" />
+                <attribute name="Main-Class" value="SimpleShm" />
+            </manifest>
+        </jar>
     </target>
 
     <target name="clean">
         <delete dir="${classes.dir}" />
+        <delete file="SimpleShm.jar" />
     </target>
 </project>
 

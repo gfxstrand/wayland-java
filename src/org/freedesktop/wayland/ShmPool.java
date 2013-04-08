@@ -54,11 +54,15 @@ public final class ShmPool implements Closeable
         if (buffer == null)
             throw new IllegalStateException("ShmPool is closed");
 
+        final ByteBuffer buffCopy;
+
         if (readOnly) {
-            return buffer.asReadOnlyBuffer();
+            buffCopy = buffer.asReadOnlyBuffer();
         } else {
-            return buffer.duplicate();
+            buffCopy = buffer.duplicate();
         }
+
+        return buffCopy.order(ByteOrder.nativeOrder());
     }
 
     public int getFileDescriptor()
@@ -124,7 +128,7 @@ public final class ShmPool implements Closeable
             throws IOException;
 
     static {
-        System.loadLibrary("wayland-java-server");
+        System.loadLibrary("wayland-java-util");
     }
 }
 
