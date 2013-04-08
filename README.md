@@ -15,9 +15,9 @@ I have working.
 ## Building wayland-java locally
 
 Building wayland-java locally isn't too difficult assuming you have a
-sufficiently patched version of the wayland library.
+version of the wayland library with language bindings support.
 
-1. Clone wayland master and apply this [patch series][1]
+1. Clone the dispatchers-internal branch of git://github.com/jekstrand/wayland.git
 2. Build and install libwayland
 3. Clone git://github.com/jekstrand/wayland-java.git
 4. Run ant
@@ -39,7 +39,7 @@ on Android, you need to do the following:
    [patch series][1]
 6. Use the Android tools to update the build paths in the `android`
    subdirectory to your version of the Android SDK
-7. Run ant
+7. Run ant from inside the `android` subdirectory
 
 [1]: http://lists.freedesktop.org/archives/wayland-devel/2013-February/007473.html
 
