@@ -74,6 +74,9 @@ wl_jni_resource_from_java(JNIEnv * env, jobject jresource)
 jobject
 wl_jni_resource_to_java(JNIEnv * env, struct wl_resource * resource)
 {
+    if (resource == NULL)
+        return NULL;
+
     return (*env)->NewLocalRef(env, resource->data);
 }
 

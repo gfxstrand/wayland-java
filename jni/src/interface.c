@@ -242,9 +242,6 @@ get_java_method(JNIEnv * env, jobject jinterface, struct wl_message *message,
     }
     strncat(jsignature, ")V", MAX_JSIG_LEN);
 
-    printf("class: %s\n", wl_jni_string_to_default(env, (*env)->CallObjectMethod(env, cls, java.lang.Class.getName)));
-    printf("%s%s\n", message->name, jsignature);
-
     return (*env)->GetMethodID(env, cls, message->name, jsignature);
 }
 
@@ -370,7 +367,7 @@ create_native_interface(JNIEnv *env, jobject jinterface)
     (*env)->DeleteLocalRef(env, jarr);
 
     (*env)->SetLongField(env, jinterface, Interface.interface_ptr,
-            (jlong)jni_interface);
+            (jlong)(intptr_t)jni_interface);
     if ((*env)->ExceptionCheck(env))
         goto delete_events;
 

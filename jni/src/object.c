@@ -194,7 +194,7 @@ wl_jni_arguments_to_java(JNIEnv *env, union wl_argument *args, jvalue *jargs,
                 goto error;
             break;
         case 'n':
-            if (! new_id_is_object) {
+            if (new_id_is_object) {
                 jargs[i].l = (*object_conversion)(env, args[i].o);
                 if ((*env)->ExceptionCheck(env))
                     goto error;

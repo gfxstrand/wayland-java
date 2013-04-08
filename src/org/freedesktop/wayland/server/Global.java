@@ -61,6 +61,7 @@ public class Global extends NativeObjectWrapper
     private static native void initializeJNI();
 
     static {
+        System.loadLibrary("wayland-java-util");
         System.loadLibrary("wayland-java-server");
         initializeJNI();
     }

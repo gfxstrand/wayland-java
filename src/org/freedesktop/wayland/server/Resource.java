@@ -57,6 +57,7 @@ public final class Resource
     // public static native void postEvent(int opcode, Object...args);
 
     static {
+        System.loadLibrary("wayland-java-util");
         System.loadLibrary("wayland-java-server");
         initializeJNI();
     }
