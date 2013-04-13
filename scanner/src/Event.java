@@ -54,22 +54,26 @@ class Event extends Message
     public void writePostMethod(Writer writer) throws IOException
     {
         if (description != null)
-            description.writeJavaDoc(writer, "\t");
-        writer.write("\tpublic static void ");
-        writer.write("post" + StringUtil.toUpperCamelCase(name) + "(");
-        writer.write("Resource resource");
+            description.writeJavaDoc(writer, "\t\t");
+        writer.write("\t\tpublic void ");
+        writer.write(StringUtil.toLowerCamelCase(name) + "(");
 
+        boolean needs_comma = false;
         for (Argument arg : args) {
-            writer.write(", " + arg.getJavaType("Resource") + " " + arg.name);
+            if (needs_comma)
+                writer.write(", ");
+
+            writer.write(arg.getJavaType("org.freedesktop.wayland.server.Resource") + " " + arg.name);
+            needs_comma = true;
         }
 
         writer.write(")\n");
-        writer.write("\t{\n");
-        writer.write("\t\tresource.postEvent(" + id);
+        writer.write("\t\t{\n");
+        writer.write("\t\t\tpostEvent(" + id);
         for (Argument arg : args)
             writer.write(", " + arg.name);
         writer.write(");\n");
-        writer.write("\t}\n");
+        writer.write("\t\t}\n");
     }
 }
 

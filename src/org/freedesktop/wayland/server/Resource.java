@@ -23,16 +23,22 @@ package org.freedesktop.wayland.server;
 
 import org.freedesktop.wayland.Interface;
 
-public final class Resource
+public class Resource
 {
     long resource_ptr;
     private Object data;
 
-    private
-    Resource(long resource_ptr, Object data)
+    protected
+    Resource(Client client, Interface iface, int id, Object data)
     {
-        this.resource_ptr = resource_ptr;
         this.data = data;
+        this.resource_ptr = client.addResourceNative(this, iface, id);
+    }
+
+    protected
+    Resource(Client client, Interface iface, Object data)
+    {
+        this(client, iface, 0, data);
     }
 
     public Object

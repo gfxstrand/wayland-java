@@ -48,10 +48,11 @@ public class Interface
     private Message[] events;
     private Class<?> eventsIface;
     private Class<?> proxyClass;
+    private Class<?> resourceClass;
 
     public Interface(String name, int version, Message[] requests,
             Class<?> requestsIface, Message[] events, Class<?> eventsIface,
-            Class<?> proxyClass)
+            Class<?> proxyClass, Class<?> resourceClass)
     {
         this.interface_ptr = 0;
 
@@ -62,6 +63,7 @@ public class Interface
         this.events = events;
         this.eventsIface = eventsIface;
         this.proxyClass = proxyClass;
+        this.resourceClass = resourceClass;
     }
 
     private native void destroyNative();
@@ -71,9 +73,24 @@ public class Interface
         return name;
     }
 
+    public Class<?> getRequestsInterface()
+    {
+        return requestsIface;
+    }
+
+    public Class<?> getEventsInterface()
+    {
+        return eventsIface;
+    }
+
     public Class<?> getProxyClass()
     {
         return proxyClass;
+    }
+
+    public Class<?> getResourceClass()
+    {
+        return resourceClass;
     }
 
     @Override

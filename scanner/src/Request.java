@@ -48,7 +48,7 @@ class Request extends Message
             if (arg.type == Argument.Type.NEW_ID && arg.ifaceName == null) {
                 writer.write(", String ifaceName, int version");
             }
-            writer.write(", " + arg.getJavaType("Resource") + " " + arg.name);
+            writer.write(", " + arg.getJavaType("org.freedesktop.wayland.server.Resource") + " " + arg.name);
         }
 
         writer.write(");\n");

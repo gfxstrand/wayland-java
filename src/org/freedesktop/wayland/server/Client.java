@@ -22,6 +22,7 @@
 package org.freedesktop.wayland.server;
 
 import java.io.File;
+import java.lang.reflect.Constructor;
 
 import org.freedesktop.wayland.Interface;
 
@@ -49,8 +50,49 @@ public class Client extends NativeObjectWrapper
     private native void setNative(long client_ptr);
     private native void create(Display display, int fd);
     public native void flush();
-    public native Resource addObject(Interface iface, int id, Object data);
-    public native Resource newObject(Interface iface, Object data);
+    // public native Resource addObject(Interface iface, int id, Object data);
+    // public native Resource newObject(Interface iface, Object data);
+    
+    native long addResourceNative(Resource res, Interface iface, int id);
+ 
+    public Resource addObject(Interface iface, int id, Object data)
+    {
+        Class<?> resourceClass = iface.getResourceClass();
+
+        try {
+            Constructor<?> ctor = resourceClass.getConstructor(Client.class,
+                    Integer.class, Object.class);
+            return (Resource)ctor.newInstance(this, id, data);
+        } catch (NoSuchMethodException e) {
+            throw new Error(e);
+        } catch (InstantiationException e) {
+            throw new Error(e);
+        } catch (IllegalAccessException e) {
+            throw new Error(e);
+        } catch (java.lang.reflect.InvocationTargetException e) {
+            throw new Error(e);
+        }
+    }
+
+    public Resource newObject(Interface iface, Object data)
+    {
+        Class<?> resourceClass = iface.getResourceClass();
+
+        try {
+            Constructor<?> ctor = resourceClass.getConstructor(Client.class,
+                    Object.class);
+            return (Resource)ctor.newInstance(this, data);
+        } catch (NoSuchMethodException e) {
+            throw new Error(e);
+        } catch (InstantiationException e) {
+            throw new Error(e);
+        } catch (IllegalAccessException e) {
+            throw new Error(e);
+        } catch (java.lang.reflect.InvocationTargetException e) {
+            throw new Error(e);
+        }
+    }
+
     public native void addDestroyListener(Listener listener);
     public native Display getDisplay();
     public native void destroy();

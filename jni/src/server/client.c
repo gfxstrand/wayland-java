@@ -245,72 +245,49 @@ Java_org_freedesktop_wayland_server_Client_flush(JNIEnv * env, jobject jclient)
     wl_client_flush(wl_jni_client_from_java(env, jclient));
 }
 
-JNIEXPORT jobject JNICALL
-Java_org_freedesktop_wayland_server_Client_addObject(JNIEnv * env,
-        jobject jclient, jobject jiface, jint id, jobject jdata)
+JNIEXPORT jlong JNICALL
+Java_org_freedesktop_wayland_server_Client_addResourceNative(JNIEnv * env,
+        jobject jclient, jobject jresource, jobject jiface, jint id)
 {
     struct wl_client * client;
     struct wl_resource * resource;
     struct wl_jni_interface *jni_interface;
-    jobject jresource;
 
     client = wl_jni_client_from_java(env, jclient);
     if (client == NULL)
-        return NULL; /* Exception Thrown */
+        return 0; /* Exception Thrown */
 
     jni_interface = wl_jni_interface_from_java(env, jiface);
     if ((*env)->ExceptionCheck(env) == JNI_TRUE)
-        return NULL; /* Exception Thrown */
-
-    resource = wl_client_add_dispatched_object(client,
-            &jni_interface->interface, &wl_jni_resource_dispatcher,
-            jni_interface->requests, id, NULL);
-    if (resource == NULL) {
-        wl_jni_throw_from_errno(env, errno);
-        return NULL; /* Error */
+        return 0; /* Exception Thrown */
+    if (jni_interface == NULL) {
+        wl_jni_throw_NullPointerException(env,
+                "Interface not allowed to be null");
+        return 0;
     }
 
-    jresource = wl_jni_resource_create_from_native(env, resource, jdata);
+    jresource = (*env)->NewGlobalRef(env, jresource);
     if (jresource == NULL) {
-        wl_resource_destroy(resource);
-        return NULL; /* Exception Thrown */
+        wl_jni_throw_OutOfMemoryError(env, NULL);
+        return 0;
     }
 
-    return jresource;
-}
-
-JNIEXPORT jobject JNICALL
-Java_org_freedesktop_wayland_server_Client_newObject(JNIEnv * env,
-        jobject jclient, jobject jiface, jobject jdata)
-{
-    struct wl_client * client;
-    struct wl_resource * resource;
-    struct wl_jni_interface *jni_interface;
-    jobject jresource;
-
-    client = wl_jni_client_from_java(env, jclient);
-    if (client == NULL)
-        return NULL; /* Exception Thrown */
-
-    jni_interface = wl_jni_interface_from_java(env, jiface);
-    if ((*env)->ExceptionCheck(env) == JNI_TRUE)
-        return NULL; /* Exception Thrown */
-
-    resource = wl_client_new_dispatched_object(client,
-            &jni_interface->interface, &wl_jni_resource_dispatcher,
-            jni_interface->requests, NULL);
+    if (id != 0) {
+        resource = wl_client_add_dispatched_object(client,
+                &jni_interface->interface, &wl_jni_resource_dispatcher,
+                jni_interface->requests, id, jresource);
+    } else {
+        resource = wl_client_new_dispatched_object(client,
+                &jni_interface->interface, &wl_jni_resource_dispatcher,
+                jni_interface->requests, jresource);
+    }
     if (resource == NULL) {
+        (*env)->DeleteGlobalRef(env, jresource);
         wl_jni_throw_from_errno(env, errno);
-        return NULL; /* Error */
+        return 0; /* Error */
     }
 
-    jresource = wl_jni_resource_create_from_native(env, resource, jdata);
-    if (jresource == NULL) {
-        wl_resource_destroy(resource);
-        return NULL; /* Exception Thrown */
-    }
-
-    return jresource;
+    return (jlong)(intptr_t)resource;
 }
 
 JNIEXPORT void JNICALL

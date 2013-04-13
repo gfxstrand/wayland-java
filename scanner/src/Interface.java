@@ -91,7 +91,7 @@ class Interface
         writer.write("import java.lang.String;\n");
         writer.write("import org.freedesktop.wayland.Fixed;\n");
         writer.write("import org.freedesktop.wayland.Interface;\n");
-        writer.write("import org.freedesktop.wayland.server.Resource;\n");
+        writer.write("import org.freedesktop.wayland.server.Client;\n");
         writer.write("import org.freedesktop.wayland.server.RequestError;\n");
         writer.write("\n");
         
@@ -114,7 +114,8 @@ class Interface
             event.writeMessageInfo(writer);
         }
         writer.write("\t\t}, Events.class, \n");
-        writer.write("\t\tProxy.class\n");
+        writer.write("\t\tProxy.class,\n");
+        writer.write("\t\tResource.class\n");
         writer.write("\t);\n");
 
         for (Enum enm : enums) {
@@ -168,10 +169,29 @@ class Interface
         }
         writer.write("\t}\n");
 
+        writer.write("\n");
+        writer.write("\tpublic static class Resource");
+        writer.write(" extends org.freedesktop.wayland.server.Resource\n");
+        writer.write("\t{\n");
+
+        writer.write("\t\tpublic Resource(");
+        writer.write("Client client, Integer id, Object data)\n");
+        writer.write("\t\t{\n");
+        writer.write("\t\t\tsuper(client, WAYLAND_INTERFACE, id, data);\n");
+        writer.write("\t\t}\n");
+
+        writer.write("\t\tpublic Resource(");
+        writer.write("Client client, Object data)\n");
+        writer.write("\t\t{\n");
+        writer.write("\t\t\tsuper(client, WAYLAND_INTERFACE, data);\n");
+        writer.write("\t\t}\n");
+
         for (Message event : events) {
             writer.write("\n");
             event.writePostMethod(writer);
         }
+
+        writer.write("\t}\n");
 
         writer.write("}\n");
     }

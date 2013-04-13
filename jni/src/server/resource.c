@@ -33,7 +33,6 @@ struct {
     jclass class;
     jfieldID resource_ptr;
     jfieldID data;
-    jmethodID init_long_obj;
     jmethodID destroy;
 } Resource;
 
@@ -89,30 +88,6 @@ resource_destroy_func(struct wl_resource * resource)
     env = wl_jni_get_env();
     (*env)->DeleteGlobalRef(env, resource->data);
     free(resource);
-}
-
-jobject
-wl_jni_resource_create_from_native(JNIEnv * env, struct wl_resource * resource,
-        jobject jdata)
-{
-    jobject jresource;
-
-    ensure_resource_object_cache(env, NULL);
-
-    jresource = (*env)->NewObject(env, Resource.class, Resource.init_long_obj,
-            (jlong)(intptr_t)resource, jdata);
-    if (jresource == NULL)
-        return NULL; /* Exception Thrown */
-
-    resource->data = (*env)->NewGlobalRef(env, jresource);
-    if (! resource->data) {
-        (*env)->DeleteLocalRef(env, jresource);
-        return NULL; /* Exception Thrown */
-    }
-
-    resource->destroy = resource_destroy_func;
-
-    return jresource;
 }
 
 JNIEXPORT jobject JNICALL
@@ -223,7 +198,7 @@ Java_org_freedesktop_wayland_server_Resource_postError(JNIEnv * env,
 }
 
 /* TODO: This code DOES NOT WORK!!! */
-static void
+static int
 handle_resource_errors(JNIEnv * env, struct wl_resource * resource)
 {
     jthrowable exception, exception2;
@@ -234,7 +209,7 @@ handle_resource_errors(JNIEnv * env, struct wl_resource * resource)
     exception = (*env)->ExceptionOccurred(env);
 
     if (exception == NULL)
-        return;
+        return 0;
 
     (*env)->ExceptionDescribe(env);
 
@@ -279,7 +254,7 @@ handle_resource_errors(JNIEnv * env, struct wl_resource * resource)
                     "%s", c_msg);
             free(c_msg);
             (*env)->ExceptionClear(env);
-            return;
+            return 0;
         } else if ((*env)->IsInstanceOf(env, exception,
                 RequestError.class)) {
             error_code = (*env)->GetIntField(env, exception,
@@ -287,7 +262,7 @@ handle_resource_errors(JNIEnv * env, struct wl_resource * resource)
             wl_resource_post_error(resource, error_code, "%s", c_msg);
             free(c_msg);
             (*env)->ExceptionClear(env);
-            return;
+            return 0;
         } else {
             free(c_msg);
             goto unhandled_exception;
@@ -299,18 +274,17 @@ handle_resource_errors(JNIEnv * env, struct wl_resource * resource)
 out_of_memory:
     wl_resource_post_no_memory(resource);
     (*env)->ExceptionClear(env);
-    return;
+    return 0;
 
 unhandled_exception:
     (*env)->ExceptionDescribe(env);
     (*env)->ExceptionClear(env);
-    return;
+    return -1;
 }
 
-void
-wl_jni_resource_dispatcher(const void * data, struct wl_object *target,
-        uint32_t opcode, const struct wl_message *message, void *client,
-        union wl_argument *args)
+int
+wl_jni_resource_dispatcher(const void *data, void *target, uint32_t opcode,
+        const struct wl_message *message, union wl_argument *args)
 {
     struct wl_resource *resource;
     const char *signature;
@@ -386,8 +360,7 @@ pop_local_frame:
 
 handle_exceptions:
     /* Handle Exceptions here */
-    handle_resource_errors(env, resource);
-    return;
+    return handle_resource_errors(env, resource);
 }
 
 JNIEXPORT void JNICALL
@@ -406,11 +379,6 @@ Java_org_freedesktop_wayland_server_Resource_initializeJNI(JNIEnv * env,
     Resource.data = (*env)->GetFieldID(env, Resource.class,
             "data", "Ljava/lang/Object;");
     if (Resource.data == NULL)
-        return; /* Exception Thrown */
-
-    Resource.init_long_obj = (*env)->GetMethodID(env, Resource.class,
-            "<init>", "(JLjava/lang/Object;)V");
-    if (Resource.init_long_obj == NULL)
         return; /* Exception Thrown */
 
     cls = (*env)->FindClass(env,

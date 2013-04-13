@@ -21,7 +21,7 @@
  */
 package org.freedesktop.wayland;
 
-public class Fixed
+public final class Fixed
 {
     private int data;
 
