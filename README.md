@@ -7,10 +7,10 @@ wayland server app that I am currently developing.
 
 ## Current state of the library
 
-Right now, wayland-java is nowhere close to production code; I would call it an
-early alpha at best.  Very little is commented and it probably has a plethora
-of bugs.  However, it is working well enough to backend the bits of my app that
-I have working.
+The wayland-java library is useable, but I am not yet ready to make guarantees
+about API stability.  There are probably a lot of bugs, but I welcome bug
+reports! It is working well enough to backend the bits of my app that I have
+working.
 
 ## Building wayland-java locally
 
@@ -20,7 +20,9 @@ version of the wayland library with language bindings support.
 1. Clone the dispatchers-internal branch of git://github.com/jekstrand/wayland.git
 2. Build and install libwayland
 3. Clone git://github.com/jekstrand/wayland-java.git
-4. Run ant
+4. Run `git submodule init` and `git submodule update` (this is mainly to pull
+   wayland.xml into the subtree because it is not yet distributed.)
+5. Run ant
 
 ## Building wayland-java for Android
 
