@@ -33,8 +33,6 @@ struct {
     jclass class;
     jfieldID resource_ptr;
     jfieldID data;
-    jfieldID tmp_iface;
-    jfieldID tmp_id;
     jmethodID init_long_obj;
     jmethodID destroy;
 } Resource;
@@ -408,16 +406,6 @@ Java_org_freedesktop_wayland_server_Resource_initializeJNI(JNIEnv * env,
     Resource.data = (*env)->GetFieldID(env, Resource.class,
             "data", "Ljava/lang/Object;");
     if (Resource.data == NULL)
-        return; /* Exception Thrown */
-
-    Resource.tmp_iface = (*env)->GetFieldID(env, Resource.class,
-            "tmp_iface", "Lorg/freedesktop/wayland/Interface;");
-    if (Resource.tmp_iface == NULL)
-        return; /* Exception Thrown */
-
-    Resource.tmp_id = (*env)->GetFieldID(env, Resource.class,
-            "tmp_id", "I");
-    if (Resource.tmp_id == NULL)
         return; /* Exception Thrown */
 
     Resource.init_long_obj = (*env)->GetMethodID(env, Resource.class,

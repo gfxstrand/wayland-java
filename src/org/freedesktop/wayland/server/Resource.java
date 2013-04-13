@@ -28,10 +28,6 @@ public final class Resource
     long resource_ptr;
     private Object data;
 
-    // These are only temporaries to make addResource work
-    private Interface tmp_iface;
-    private int tmp_id;
-
     private
     Resource(long resource_ptr, Object data)
     {
