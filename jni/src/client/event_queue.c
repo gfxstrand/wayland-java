@@ -1,4 +1,3 @@
-
 /*
  * Copyright © 2012-2013 Jason Ekstrand.
  *  
