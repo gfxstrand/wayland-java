@@ -49,17 +49,17 @@ $(OBJECT_DIR)%.o: src/%.c
 	gcc $(CFLAGS) -c $< -o $@
 
 $(BUILD_DIR)/libwayland-java-util.so: $(UTIL_OBJECTS)
-	gcc -shared -o $@ $^ $(UTIL_LDFLAGS)
+	gcc -shared -Wl,-soname,libwayland-java-util.so -o $@ $^ $(UTIL_LDFLAGS)
 
 $(BUILD_DIR)/libwayland-java-server.so: $(BUILD_DIR)/libwayland-java-util.so
 
 $(BUILD_DIR)/libwayland-java-server.so: $(SERVER_OBJECTS)
-	gcc -shared -o $@ $^ $(SERVER_LDFLAGS)
+	gcc -shared -Wl,-soname,libwayland-java-server.so -o $@ $^ $(SERVER_LDFLAGS)
 
 $(BUILD_DIR)/libwayland-java-client.so: $(BUILD_DIR)/libwayland-java-util.so
 
 $(BUILD_DIR)/libwayland-java-client.so: $(CLIENT_OBJECTS)
-	gcc -shared -o $@ $^ $(CLIENT_LDFLAGS)
+	gcc -shared -Wl,-soname,libwayland-java-client.so -o $@ $^ $(CLIENT_LDFLAGS)
 
 .PHONY: clean
 clean:
