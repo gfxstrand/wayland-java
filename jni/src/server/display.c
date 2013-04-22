@@ -19,6 +19,7 @@
  * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE
  * OF THIS SOFTWARE.
  */
+#include <stdlib.h>
 #include <string.h>
 #include <wayland-server.h>
 
@@ -79,23 +80,24 @@ Java_org_freedesktop_wayland_server_Display_getEventLoop(JNIEnv *env,
 
 JNIEXPORT jint JNICALL
 Java_org_freedesktop_wayland_server_Display_addSocket(JNIEnv * env,
-        jobject jdisplay, jobject jname)
+        jobject jdisplay, jstring jname)
 {
     char * name;
     struct wl_display * display;
+    int fd;
 
     display = wl_jni_display_from_java(env, jdisplay);
 
     if (jname == NULL) {
         wl_jni_throw_NullPointerException(env, "No socket name given");
-        return;
+        return 0;
     }
 
     name = wl_jni_string_to_default(env, jname);
     if (name == NULL)
-        return; /* Exception Thrown */
+        return 0; /* Exception Thrown */
 
-    int fd = wl_display_add_socket(display, name);
+    fd = wl_display_add_socket(display, name);
 
     free(name);
 

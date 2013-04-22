@@ -35,7 +35,7 @@ public class Display
     }
 
     public native EventLoop getEventLoop();
-    public native int addSocket(File name);
+    public native int addSocket(String name);
     public native void terminate();
     public native void run();
     public native void flushClients();
