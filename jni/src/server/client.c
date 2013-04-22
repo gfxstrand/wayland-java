@@ -352,7 +352,7 @@ Java_org_freedesktop_wayland_server_Client_initializeJNI(JNIEnv * env,
 static void
 ensure_client_object_cache(JNIEnv * env, jclass cls)
 {
-    if (Client.class != NULL);
+    if (Client.class)
         return;
 
     if (cls == NULL) {
