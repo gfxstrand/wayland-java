@@ -48,7 +48,7 @@ public class Resource
     }
 
     public native Client getClient();
-    public native void addDestroyListener(Listener listener);
+    public native void addDestroyListener(DestroyListener listener);
     public native void destroy();
 
     public native void postEvent(int opcode, Object...args);

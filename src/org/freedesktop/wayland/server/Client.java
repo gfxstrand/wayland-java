@@ -93,7 +93,7 @@ public class Client extends NativeObjectWrapper
         }
     }
 
-    public native void addDestroyListener(Listener listener);
+    public native void addDestroyListener(DestroyListener listener);
     public native Display getDisplay();
     public native void destroy();
 

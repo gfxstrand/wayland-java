@@ -21,28 +21,23 @@
  */
 package org.freedesktop.wayland.server;
 
-public abstract class Listener
+public abstract class DestroyListener
 {
     private long listener_ptr;
 
-    public Listener()
+    public DestroyListener()
     {
-        _create();
+        listener_ptr = 0;
     }
 
     public native void detach();
 
-    public abstract void onNotify();
-
-    private native void _create();
-    private native void _destroy();
-
-    @Override
-    public void finalize() throws Throwable
+    public boolean isAttached()
     {
-        _destroy();
-        super.finalize();
+        return listener_ptr != 0;
     }
+
+    public abstract void onDestroy();
 
     private static native void initializeJNI();
 

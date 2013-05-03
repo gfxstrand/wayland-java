@@ -27,138 +27,124 @@
 struct {
     jclass class;
     jfieldID listener_ptr;
-    jmethodID onNotify;
-} Listener;
+    jmethodID onDestroy;
+} DestroyListener;
 
-void Java_org_freedesktop_wayland_server_Listener_detach(JNIEnv * env,
+void Java_org_freedesktop_wayland_server_DestroyListener_detach(JNIEnv * env,
         jobject jlistener);
 
-struct wl_jni_listener *
-wl_jni_listener_from_java(JNIEnv * env, jobject jlistener)
+struct wl_jni_destroy_listener *
+wl_jni_destroy_listener_from_java(JNIEnv * env, jobject jlistener)
 {
     if (jlistener == NULL)
         return NULL;
 
-    return (struct wl_jni_listener *)(intptr_t)
-            (*env)->GetLongField(env, jlistener, Listener.listener_ptr);
-}
-
-void
-wl_jni_listener_added_to_signal(JNIEnv * env, jobject jlistener)
-{
-    struct wl_jni_listener * jni_listener;
-
-    jni_listener = wl_jni_listener_from_java(env, jlistener);
-
-    if (jni_listener == NULL)
-        return;
-
-    jni_listener->self_ref = (*env)->NewGlobalRef(env, jlistener);
+    return (struct wl_jni_destroy_listener *)(intptr_t)
+            (*env)->GetLongField(env, jlistener, DestroyListener.listener_ptr);
 }
 
 static void
 listener_notify_func(struct wl_listener * listener, void * data)
 {
-    struct wl_jni_listener * jni_listener;
+    struct wl_jni_destroy_listener * jni_listener;
     JNIEnv * env;
+    jobject jlistener;
 
     jni_listener = wl_container_of(listener, jni_listener, listener);
 
     env = wl_jni_get_env();
 
+    jlistener = (*env)->NewLocalRef(env, jni_listener->self_ref);
+
     /* TODO: Do something with the data parameter? */
-    (*env)->CallVoidMethod(env, jni_listener->self_ref, Listener.onNotify);
+    (*env)->CallVoidMethod(env, jni_listener->self_ref, DestroyListener.onDestroy);
     if ((*env)->ExceptionCheck(env) == JNI_TRUE) {
+        (*env)->DeleteLocalRef(env, jlistener);
         (*env)->ExceptionDescribe(env);
+        return;
         /* TODO */
     }
+
+    Java_org_freedesktop_wayland_server_DestroyListener_detach(env,
+            jlistener);
+    (*env)->DeleteLocalRef(env, jlistener);
 }
 
-static void
-listener_destroy_func(struct wl_listener * listener, void * data)
+struct wl_jni_destroy_listener *
+wl_jni_destroy_listener_add_to_signal(JNIEnv * env, jobject jlistener)
 {
-    struct wl_jni_listener * jni_listener;
-    JNIEnv * env;
+    struct wl_jni_destroy_listener * jni_listener;
 
-    jni_listener = wl_container_of(listener, jni_listener, destroy_listener);
+    jni_listener = wl_jni_destroy_listener_from_java(env, jlistener);
 
-    env = wl_jni_get_env();
-
-    Java_org_freedesktop_wayland_server_Listener_detach(
-            env, jni_listener->self_ref);
-    if ((*env)->ExceptionCheck(env) == JNI_TRUE) {
-        (*env)->ExceptionDescribe(env);
-        /* TODO */
+    if (jni_listener != NULL) {
+        wl_jni_throw_IllegalStateException(env, "DestroyListener already attached");
+        return NULL;
     }
-}
 
-JNIEXPORT void JNICALL
-Java_org_freedesktop_wayland_server_Listener__1create(JNIEnv * env,
-        jobject jlistener)
-{
-    struct wl_jni_listener * jni_listener;
-
-    jni_listener = malloc(sizeof(struct wl_jni_listener));
+    jni_listener = malloc(sizeof(struct wl_jni_destroy_listener));
     if (jni_listener == NULL) {
         wl_jni_throw_OutOfMemoryError(env, NULL);
-        return;
+        return NULL;
     }
 
-    memset(jni_listener, 0, sizeof(struct wl_jni_listener));
-
+    memset(jni_listener, 0, sizeof(struct wl_jni_destroy_listener));
     jni_listener->listener.notify = &listener_notify_func;
-    jni_listener->destroy_listener.notify = &listener_destroy_func;
 
-    (*env)->SetLongField(env, jlistener, Listener.listener_ptr,
+    jni_listener->self_ref = (*env)->NewGlobalRef(env, jlistener);
+    if (jni_listener->self_ref == NULL) {
+        wl_jni_throw_OutOfMemoryError(env, NULL);
+        free(jni_listener);
+        return NULL;
+    }
+
+    (*env)->SetLongField(env, jlistener, DestroyListener.listener_ptr,
             (jlong)(intptr_t)jni_listener);
+    if ((*env)->ExceptionCheck(env)) {
+        (*env)->DeleteGlobalRef(env, jni_listener->self_ref);
+        free(jni_listener);
+        return NULL;
+    }
+
+    return jni_listener;
 }
 
 JNIEXPORT void JNICALL
-Java_org_freedesktop_wayland_server_Listener_detach(JNIEnv * env,
+Java_org_freedesktop_wayland_server_DestroyListener_detach(JNIEnv * env,
         jobject jlistener)
 {
-    struct wl_jni_listener * jni_listener;
+    struct wl_jni_destroy_listener * jni_listener;
     
-    jni_listener = wl_jni_listener_from_java(env, jlistener);
-    if (jni_listener == NULL)
-        return; /* This is an error */
+    jni_listener = wl_jni_destroy_listener_from_java(env, jlistener);
+    if ((*env)->ExceptionCheck(env))
+        return;
 
-    wl_list_remove(&jni_listener->listener.link);
-    wl_list_remove(&jni_listener->destroy_listener.link);
-
-    (*env)->DeleteGlobalRef(env, jni_listener->self_ref);
-    jni_listener->self_ref = NULL;
-}
-
-JNIEXPORT void JNICALL
-Java_org_freedesktop_wayland_server_Listener__1destroy(JNIEnv * env,
-        jobject jlistener)
-{
-    struct wl_jni_listener * jni_listener;
-    
-    jni_listener = wl_jni_listener_from_java(env, jlistener);
     if (jni_listener == NULL)
         return;
 
+    wl_list_remove(&jni_listener->listener.link);
+
+    (*env)->DeleteGlobalRef(env, jni_listener->self_ref);
     free(jni_listener);
+    (*env)->SetLongField(env, jlistener, DestroyListener.listener_ptr, 0);
 }
 
 JNIEXPORT void JNICALL
-Java_org_freedesktop_wayland_server_Listener_initializeJNI(JNIEnv * env,
+Java_org_freedesktop_wayland_server_DestroyListener_initializeJNI(JNIEnv * env,
         jclass cls)
 {
-    Listener.class = (*env)->NewGlobalRef(env, cls);
-    if (Listener.class == NULL)
+    DestroyListener.class = (*env)->NewGlobalRef(env, cls);
+    if (DestroyListener.class == NULL)
         return; /* Exception Thrown */
         
-    Listener.listener_ptr = (*env)->GetFieldID(env, Listener.class,
+    DestroyListener.listener_ptr = (*env)->GetFieldID(env, DestroyListener.class,
             "listener_ptr", "J");
-    if (Listener.listener_ptr == NULL)
+    if (DestroyListener.listener_ptr == NULL)
         return; /* Exception Thrown */
 
-    Listener.onNotify = (*env)->GetMethodID(env, Listener.class,
-            "onNotify", "()V");
-    if (Listener.onNotify == NULL)
+    DestroyListener.onDestroy = (*env)->GetMethodID(env, DestroyListener.class,
+            "onDestroy", "()V");
+    if (DestroyListener.onDestroy == NULL)
         return; /* Exception Thrown */
 }
 

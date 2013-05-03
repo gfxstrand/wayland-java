@@ -295,19 +295,21 @@ Java_org_freedesktop_wayland_server_Client_addDestroyListener(JNIEnv * env,
         jobject jclient, jobject jlistener)
 {
     struct wl_client * client;
-    struct wl_jni_listener * jni_listener;
+    struct wl_jni_destroy_listener * jni_listener;
 
-    client = wl_jni_client_from_java(env, jclient);
-    jni_listener = wl_jni_listener_from_java(env, jlistener);
-
-    if (jni_listener == NULL) {
+    if ((*env)->IsSameObject(env, jlistener, NULL)) {
         wl_jni_throw_NullPointerException(env,
                 "Listener not allowed to be null");
         return;
     }
 
+    jni_listener = wl_jni_destroy_listener_add_to_signal(env, jlistener);
+    if (jni_listener == NULL)
+        return; /*Exception throw */
+
+    client = wl_jni_client_from_java(env, jclient);
+
     wl_client_add_destroy_listener(client, &jni_listener->listener);
-    wl_client_add_destroy_listener(client, &jni_listener->destroy_listener);
 }
 
 JNIEXPORT jobject JNICALL

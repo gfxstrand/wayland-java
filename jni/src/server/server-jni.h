@@ -70,16 +70,16 @@ jobject wl_jni_resource_to_java(JNIEnv * env, struct wl_resource * resource);
 int wl_jni_resource_dispatcher(const void *data, void *target, uint32_t opcode,
         const struct wl_message *message, union wl_argument *args);
 
-struct wl_jni_listener {
+struct wl_jni_destroy_listener {
     struct wl_listener listener;
-    struct wl_listener destroy_listener;
     jobject self_ref;
 };
 
-struct wl_jni_listener * wl_jni_listener_from_java(JNIEnv * env,
-        jobject jlistener);
+struct wl_jni_destroy_listener * wl_jni_destroy_listener_from_java(
+        JNIEnv * env, jobject jlistener);
 
-void wl_jni_listener_added_to_signal(JNIEnv * env, jobject jlistener);
+struct wl_jni_destroy_listener *wl_jni_destroy_listener_add_to_signal(
+        JNIEnv * env, jobject jlistener);
 
 #endif /* ! defined __WAYLAND_JAVA_SERVER_JNI_H__ */
 
