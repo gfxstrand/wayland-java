@@ -21,24 +21,40 @@
  */
 #include "wayland-jni.h"
 
-wl_fixed_t
-wl_jni_fixed_from_java(JNIEnv * env, jobject jfixed)
+struct {
+    jobject class;
+    jfieldID data;
+    jmethodID init;
+} Fixed;
+
+static void
+ensure_object_cache(JNIEnv *env)
 {
-    jclass cls = (*env)->GetObjectClass(env, jfixed);
-    jfieldID fid = (*env)->GetFieldID(env, cls, "data", "I");
-    wl_fixed_t fixed = (wl_fixed_t)(*env)->GetIntField(env, jfixed, fid);
+    jobject cls;
+
+    if (Fixed.class != NULL)
+        return;
+
+    cls = (*env)->FindClass(env, "org/freedesktop/wayland/Fixed");
+    Fixed.class = (*env)->NewGlobalRef(env, cls);
     (*env)->DeleteLocalRef(env, cls);
-    return fixed;
+
+    Fixed.data = (*env)->GetFieldID(env, Fixed.class, "data", "I");
+    Fixed.init = (*env)->GetMethodID(env, Fixed.class, "<init>", "(IZ)V");
+}
+
+wl_fixed_t
+wl_jni_fixed_from_java(JNIEnv *env, jobject jfixed)
+{
+    ensure_object_cache(env);
+    return (wl_fixed_t)(*env)->GetIntField(env, jfixed, Fixed.data);
 }
 
 jobject
 wl_jni_fixed_to_java(JNIEnv * env, wl_fixed_t fixed)
 {
-    jclass cls = (*env)->FindClass(env, "org/freedesktop/wayland/Fixed");
-    jmethodID cid = (*env)->GetMethodID(env, cls, "<init>", "(IB)V");
-    jobject jfixed = (*env)->NewObject(env, cls, cid, (jint)fixed,
+    ensure_object_cache(env);
+    return (*env)->NewObject(env, Fixed.class, Fixed.init, (jint)fixed,
             (jboolean)JNI_TRUE);
-    (*env)->DeleteLocalRef(env, cls);
-    return jfixed;
 }
 
