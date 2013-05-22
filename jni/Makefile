@@ -23,7 +23,11 @@ include files.mk
 BUILD_DIR := ../build
 OBJECT_DIR := $(BUILD_DIR)/objects
 
-JNI_CFLAGS := -I/lib/jvm/java/include -I/lib/jvm/java/include/linux
+ifeq ($(JAVA_HOME),)
+JAVA_HOME = $(realpath $(dir $(realpath $(shell which javac)))/../ )
+endif
+
+JNI_CFLAGS := -I$(JAVA_HOME)/include -I$(JAVA_HOME)/include/linux
 
 WAYLAND_CFLAGS := $(CFLAGS) $(shell pkg-config --cflags wayland-server wayland-egl wayland-client)
 
