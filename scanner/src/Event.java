@@ -26,7 +26,6 @@ import java.io.IOException;
 
 import org.w3c.dom.Node;
 import org.w3c.dom.Element;
-
 class Event extends Message
 {
     public Event(Interface iface, int id, Element xmlElem)
@@ -44,7 +43,18 @@ class Event extends Message
         writer.write("(Proxy proxy");
 
         for (Argument arg : args) {
-            writer.write(", " + arg.getJavaType("org.freedesktop.wayland.client.Proxy") + " " + arg.name);
+            writer.write(", ");
+
+            switch (arg.type) {
+            case NEW_ID:
+            case OBJECT:
+                writer.write("org.freedesktop.wayland.client.Proxy");
+                break;
+            default:
+                writer.write(arg.getJavaType(null));
+            }
+
+            writer.write(" " + arg.name);
         }
 
         writer.write(");\n");
@@ -63,7 +73,15 @@ class Event extends Message
             if (needs_comma)
                 writer.write(", ");
 
-            writer.write(arg.getJavaType("org.freedesktop.wayland.server.Resource") + " " + arg.name);
+            switch (arg.type) {
+            case NEW_ID:
+            case OBJECT:
+                writer.write("org.freedesktop.wayland.server.Resource");
+                break;
+            default:
+                writer.write(arg.getJavaType(null));
+            }
+            writer.write(" " + arg.name);
             needs_comma = true;
         }
 
