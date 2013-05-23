@@ -48,6 +48,7 @@ public class Resource
     }
 
     public native Client getClient();
+    public native int getId();
     public native void addDestroyListener(DestroyListener listener);
     public native void destroy();
 

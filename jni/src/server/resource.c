@@ -75,19 +75,6 @@ wl_jni_resource_to_java(JNIEnv * env, struct wl_resource * resource)
     return (*env)->NewLocalRef(env, resource->data);
 }
 
-static void
-resource_destroy_func(struct wl_resource * resource)
-{
-    JNIEnv * env;
-
-    if (resource == NULL)
-        return;
-
-    env = wl_jni_get_env();
-    (*env)->DeleteGlobalRef(env, resource->data);
-    free(resource);
-}
-
 JNIEXPORT jobject JNICALL
 Java_org_freedesktop_wayland_server_Resource_getClient(JNIEnv * env,
         jobject jresource)
@@ -95,10 +82,27 @@ Java_org_freedesktop_wayland_server_Resource_getClient(JNIEnv * env,
     struct wl_resource *resource;
 
     resource = wl_jni_resource_from_java(env, jresource);
-    if (resource == NULL)
+    if (resource == NULL) {
+        wl_jni_throw_NullPointerException(env, NULL);
         return NULL;
+    }
 
     return wl_jni_client_to_java(env, resource->client);
+}
+
+JNIEXPORT jint JNICALL
+Java_org_freedesktop_wayland_server_Resource_getId(JNIEnv * env,
+        jobject jresource)
+{
+    struct wl_resource *resource;
+
+    resource = wl_jni_resource_from_java(env, jresource);
+    if (resource == NULL) {
+        wl_jni_throw_NullPointerException(env, NULL);
+        return 0;
+    }
+
+    return resource->object.id;
 }
 
 JNIEXPORT void JNICALL
