@@ -57,6 +57,12 @@ public class Resource
 
     private static native void initializeJNI();
 
+    @Override
+    public int hashCode()
+    {
+        return (int)resource_ptr;
+    }
+
     // public static native void postEvent(int opcode, Object...args);
 
     static {
