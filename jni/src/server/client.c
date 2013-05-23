@@ -245,6 +245,19 @@ Java_org_freedesktop_wayland_server_Client_flush(JNIEnv * env, jobject jclient)
     wl_client_flush(wl_jni_client_from_java(env, jclient));
 }
 
+static void
+resource_destroyed(struct wl_resource * resource)
+{
+    JNIEnv * env;
+
+    if (resource == NULL)
+        return;
+
+    env = wl_jni_get_env();
+    (*env)->DeleteGlobalRef(env, resource->data);
+    free(resource);
+}
+
 JNIEXPORT jlong JNICALL
 Java_org_freedesktop_wayland_server_Client_addResourceNative(JNIEnv * env,
         jobject jclient, jobject jresource, jobject jiface, jint id)
@@ -286,6 +299,8 @@ Java_org_freedesktop_wayland_server_Client_addResourceNative(JNIEnv * env,
         wl_jni_throw_from_errno(env, errno);
         return 0; /* Error */
     }
+
+    resource->destroy = resource_destroyed;
 
     return (jlong)(intptr_t)resource;
 }
