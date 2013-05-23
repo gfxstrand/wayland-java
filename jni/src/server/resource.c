@@ -56,8 +56,6 @@ struct {
     } lang;
 } java;
 
-static void ensure_resource_object_cache(JNIEnv * env, jclass cls);
-
 struct wl_resource *
 wl_jni_resource_from_java(JNIEnv * env, jobject jresource)
 {
@@ -424,22 +422,5 @@ Java_org_freedesktop_wayland_server_Resource_initializeJNI(JNIEnv * env,
             java.lang.Throwable.class, "getMessage", "()Ljava/lang/String;");
     if (java.lang.Throwable.getMessage == NULL)
         return; /* Exception Thrown */
-}
-
-static void
-ensure_resource_object_cache(JNIEnv * env, jclass cls)
-{
-    if (Resource.class != NULL)
-        return;
-
-    if (cls == NULL) {
-        cls = (*env)->FindClass(env, "org/freedesktop/wayland/server/Resource");
-        if (cls == NULL)
-            return;
-        Java_org_freedesktop_wayland_server_Resource_initializeJNI(env, cls);
-        (*env)->DeleteLocalRef(env, cls);
-    } else {
-        Java_org_freedesktop_wayland_server_Resource_initializeJNI(env, cls);
-    }
 }
 
