@@ -30,6 +30,7 @@ OF THIS SOFTWARE.
     <property name="build.dir" value="build" />
     <property name="classes.dir" value="${build.dir}/classes" />
     <property name="jni.dir" value="jni" />
+    <property name="javadoc.dir" value="doc/javadoc" />
 
     <target name="scanner"
             description="Build the scanner">
@@ -54,6 +55,16 @@ OF THIS SOFTWARE.
         <mkdir dir="${classes.dir}" />
         <javac srcdir="${source.dir}" destdir="${classes.dir}"
                 includeantruntime="false" />
+    </target>
+
+    <target name="javadoc" depends="protocol">
+        <mkdir dir="${javadoc.dir}" />
+        <javadoc sourcepath="${source.dir}" destdir="${javadoc.dir}"
+                access="public">
+            <package name="org.freedesktop.wayland.server" />
+            <package name="org.freedesktop.wayland.client" />
+            <package name="org.freedesktop.wayland.protocol" />
+        </javadoc>
     </target>
 
     <target name="clean">
