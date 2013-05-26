@@ -22,7 +22,7 @@ version of the wayland library with language bindings support.
 3. Clone git://github.com/jekstrand/wayland-java.git
 4. Run `git submodule init` and `git submodule update` (this is mainly to pull
    wayland.xml into the subtree because it is not yet distributed.)
-5. Run ant
+5. Run maven
 
 ## Building wayland-java for Android
 
@@ -34,10 +34,10 @@ on Android, you need to do the following:
 1. Install both the android SDK and NDK and get them configured
 2. Clone git://github.com/jekstrand/wayland-java.git
 3. Run `git submodule init` and `git submodule update`
-4. In the jni/external/wayland directory, you have to modify the wayland source
+4. In the protocol/src/main/native/external/wayland directory, you have to modify the wayland source
    code to remove calls to `signalfd` and `timerfd` and their respective header
    files
-5. Make sure that the version of jni/external/wayland is patched with this
+5. Make sure that the version of protocol/src/main/native/external/wayland is patched with this
    [patch series][1]
 6. Use the Android tools to update the build paths in the `android`
    subdirectory to your version of the Android SDK
