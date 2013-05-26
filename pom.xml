@@ -27,6 +27,7 @@
     <modules>
         <module>scanner</module>
         <module>protocol</module>
+        <module>examples</module>
     </modules>
 
     <dependencies>

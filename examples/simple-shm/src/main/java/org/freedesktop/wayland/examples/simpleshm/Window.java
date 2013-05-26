@@ -21,6 +21,8 @@
  * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE
  * OF THIS SOFTWARE.
  */
+package org.freedesktop.wayland.examples.simpleshm;
+
 import org.freedesktop.wayland.client.*;
 import org.freedesktop.wayland.ShmPool;
 import org.freedesktop.wayland.protocol.*;

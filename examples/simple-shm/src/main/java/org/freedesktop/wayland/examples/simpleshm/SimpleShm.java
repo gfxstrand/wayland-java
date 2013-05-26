@@ -21,6 +21,8 @@
  * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE
  * OF THIS SOFTWARE.
  */
+package org.freedesktop.wayland.examples.simpleshm;
+
 public class SimpleShm
 {
     public static void main(String args[])
