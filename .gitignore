@@ -9,3 +9,5 @@ scanner/classes
 scanner/WaylandProtocolScanner.jar
 test/classes
 
+/.settings
+/.project

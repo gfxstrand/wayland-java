@@ -1,6 +1,6 @@
-[submodule "jni/external/wayland"]
-	path = jni/external/wayland
+[submodule "protocol/src/main/native/external/wayland"]
+	path = protocol/src/main/native/external/wayland
 	url = https://github.com/jekstrand/wayland.git
-[submodule "jni/external/libffi"]
-	path = jni/external/libffi
+[submodule "protocol/src/main/native/external/libffi"]
+	path = protocol/src/main/native/external/libffi
 	url = https://android.googlesource.com/platform/external/libffi.git

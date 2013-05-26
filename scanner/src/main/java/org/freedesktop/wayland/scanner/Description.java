@@ -19,6 +19,8 @@
  * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE
  * OF THIS SOFTWARE.
  */
+package org.freedesktop.wayland.scanner;
+
 import org.w3c.dom.Element;
 
 import java.io.Writer;
