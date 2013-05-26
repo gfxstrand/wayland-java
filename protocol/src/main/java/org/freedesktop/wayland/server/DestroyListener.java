@@ -21,6 +21,8 @@
  */
 package org.freedesktop.wayland.server;
 
+import org.freedesktop.wayland.arch.Native;
+
 public abstract class DestroyListener
 {
     private long listener_ptr;
@@ -42,8 +44,8 @@ public abstract class DestroyListener
     private static native void initializeJNI();
 
     static {
-        System.loadLibrary("wayland-java-util");
-        System.loadLibrary("wayland-java-server");
+        Native.loadLibrary("wayland-java-util");
+        Native.loadLibrary("wayland-java-server");
         initializeJNI();
     }
 }

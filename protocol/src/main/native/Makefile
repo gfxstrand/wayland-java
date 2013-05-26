@@ -20,8 +20,9 @@
 
 include files.mk
 
-BUILD_DIR := ../build
-OBJECT_DIR := $(BUILD_DIR)/objects
+BUILD_DIR := ../resources
+$(shell mkdir -p $(BUILD_DIR))
+OBJECT_DIR := build/objects
 
 ifeq ($(JAVA_HOME),)
 JAVA_HOME = $(realpath $(dir $(realpath $(shell which javac)))/../ )

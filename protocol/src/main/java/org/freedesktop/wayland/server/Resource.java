@@ -21,6 +21,7 @@
  */
 package org.freedesktop.wayland.server;
 
+import org.freedesktop.wayland.arch.Native;
 import org.freedesktop.wayland.Interface;
 
 public class Resource
@@ -66,8 +67,8 @@ public class Resource
     // public static native void postEvent(int opcode, Object...args);
 
     static {
-        System.loadLibrary("wayland-java-util");
-        System.loadLibrary("wayland-java-server");
+        Native.loadLibrary("wayland-java-util");
+        Native.loadLibrary("wayland-java-server");
         initializeJNI();
     }
 }

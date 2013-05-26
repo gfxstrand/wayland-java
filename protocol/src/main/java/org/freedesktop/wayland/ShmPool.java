@@ -21,6 +21,8 @@
  */
 package org.freedesktop.wayland;
 
+import org.freedesktop.wayland.arch.Native;
+
 import java.io.Closeable;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -149,7 +151,7 @@ public final class ShmPool implements Closeable
             throws IOException;
 
     static {
-        System.loadLibrary("wayland-java-util");
+        Native.loadLibrary("wayland-java-util");
     }
 }
 

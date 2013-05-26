@@ -21,6 +21,8 @@
  */
 package org.freedesktop.wayland;
 
+import org.freedesktop.wayland.arch.Native;
+
 import java.io.StringWriter;
 
 public class Interface
@@ -103,8 +105,8 @@ public class Interface
 
     private static native void initializeJNI();
     static {
+        Native.loadLibrary("wayland-java-util");
         initializeJNI();
-        System.loadLibrary("wayland-java-util");
     }
 }
 

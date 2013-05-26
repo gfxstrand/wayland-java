@@ -21,6 +21,8 @@
  */
 package org.freedesktop.wayland.client;
 
+import org.freedesktop.wayland.arch.Native;
+
 import org.freedesktop.wayland.protocol.wl_display;
 
 public class Display extends wl_display.Proxy
@@ -50,8 +52,8 @@ public class Display extends wl_display.Proxy
     public native int roundtrip();
 
     static {
-        System.loadLibrary("wayland-java-util");
-        System.loadLibrary("wayland-java-client");
+        Native.loadLibrary("wayland-java-util");
+        Native.loadLibrary("wayland-java-client");
     }
 }
 

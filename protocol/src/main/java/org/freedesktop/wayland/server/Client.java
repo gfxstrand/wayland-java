@@ -24,6 +24,7 @@ package org.freedesktop.wayland.server;
 import java.io.File;
 import java.lang.reflect.Constructor;
 
+import org.freedesktop.wayland.arch.Native;
 import org.freedesktop.wayland.Interface;
 
 public class Client extends NativeObjectWrapper
@@ -108,8 +109,8 @@ public class Client extends NativeObjectWrapper
     private static native void initializeJNI();
 
     static {
-        System.loadLibrary("wayland-java-util");
-        System.loadLibrary("wayland-java-server");
+        Native.loadLibrary("wayland-java-util");
+        Native.loadLibrary("wayland-java-server");
         initializeJNI();
     }
 }

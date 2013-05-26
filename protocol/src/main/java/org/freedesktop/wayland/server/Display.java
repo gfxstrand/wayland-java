@@ -23,6 +23,7 @@ package org.freedesktop.wayland.server;
 
 import java.io.File;
 
+import org.freedesktop.wayland.arch.Native;
 import org.freedesktop.wayland.Interface;
 
 public class Display
@@ -65,8 +66,8 @@ public class Display
     private static native void initializeJNI();
 
     static {
-        System.loadLibrary("wayland-java-util");
-        System.loadLibrary("wayland-java-server");
+        Native.loadLibrary("wayland-java-util");
+        Native.loadLibrary("wayland-java-server");
         initializeJNI();
     }
 }

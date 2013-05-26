@@ -21,6 +21,7 @@
  */
 package org.freedesktop.wayland.server;
 
+import org.freedesktop.wayland.arch.Native;
 import org.freedesktop.wayland.Interface;
 
 public class Global extends NativeObjectWrapper
@@ -61,8 +62,8 @@ public class Global extends NativeObjectWrapper
     private static native void initializeJNI();
 
     static {
-        System.loadLibrary("wayland-java-util");
-        System.loadLibrary("wayland-java-server");
+        Native.loadLibrary("wayland-java-util");
+        Native.loadLibrary("wayland-java-server");
         initializeJNI();
     }
 }

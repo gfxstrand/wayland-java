@@ -24,6 +24,7 @@ package org.freedesktop.wayland.client;
 import java.lang.Class;
 import java.lang.reflect.Constructor;
 
+import org.freedesktop.wayland.arch.Native;
 import org.freedesktop.wayland.Interface;
 import org.freedesktop.wayland.protocol.wl_display;
 
@@ -94,8 +95,8 @@ public class Proxy
 
     private static native void initializeJNI();
     static {
-        System.loadLibrary("wayland-java-util");
-        System.loadLibrary("wayland-java-client");
+        Native.loadLibrary("wayland-java-util");
+        Native.loadLibrary("wayland-java-client");
         initializeJNI();
     }
 }

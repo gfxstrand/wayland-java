@@ -21,6 +21,8 @@
  */
 package org.freedesktop.wayland.server;
 
+import org.freedesktop.wayland.arch.Native;
+
 abstract class NativeObjectWrapper
 {
     long data_ptr;
@@ -59,8 +61,8 @@ abstract class NativeObjectWrapper
     private static native void initializeJNI();
 
     static {
-        System.loadLibrary("wayland-java-util");
-        System.loadLibrary("wayland-java-server");
+        Native.loadLibrary("wayland-java-util");
+        Native.loadLibrary("wayland-java-server");
         initializeJNI();
     }
 }

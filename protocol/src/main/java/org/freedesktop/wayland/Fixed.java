@@ -21,6 +21,8 @@
  */
 package org.freedesktop.wayland;
 
+import org.freedesktop.wayland.arch.Native;
+
 public final class Fixed
 {
     private int data;
@@ -51,7 +53,7 @@ public final class Fixed
     }
 
     static {
-        System.loadLibrary("wayland-java-util");
+        Native.loadLibrary("wayland-java-util");
     }
 }
 
