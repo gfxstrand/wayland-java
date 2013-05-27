@@ -73,5 +73,34 @@
                 </executions>
             </plugin>
         </plugins>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-javadoc-plugin</artifactId>
+                    <version>2.9</version>
+                    <configuration>
+                        <verbose>true</verbose>
+                        <groups>
+                            <group>
+                                <title>Server API</title>
+                                <packages>org.freedesktop.wayland.server*</packages>
+                            </group>
+                            <group>
+                                <title>Client API</title>
+                                <packages>org.freedesktop.wayland.client*</packages>
+                            </group>
+                            <group>
+                                <title>Protocol API</title>
+                                <packages>org.freedesktop.wayland.protocol*</packages>
+                            </group>
+                        </groups>
+                        <linksource>true</linksource>
+                        <minmemory>16m</minmemory>
+                        <maxmemory>128m</maxmemory>
+                    </configuration>
+                </plugin>
+            </plugins>
+        </pluginManagement>
     </build>
 </project>
