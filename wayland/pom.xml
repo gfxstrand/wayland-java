@@ -10,7 +10,7 @@
     </parent>
 
     <artifactId>wayland.protocol</artifactId>
-    <name>Wayland Java protocol</name>
+    <name>Wayland Java bindings</name>
 
 
     <build>

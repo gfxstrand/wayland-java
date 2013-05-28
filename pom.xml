@@ -26,7 +26,7 @@
 
     <modules>
         <module>scanner</module>
-        <module>protocol</module>
+        <module>wayland</module>
         <module>examples</module>
     </modules>
 
