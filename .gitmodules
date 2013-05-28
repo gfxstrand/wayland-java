@@ -1,6 +1,6 @@
-[submodule "protocol/src/main/native/external/wayland"]
-	path = protocol/src/main/native/external/wayland
-	url = https://github.com/jekstrand/wayland.git
-[submodule "protocol/src/main/native/external/libffi"]
-	path = protocol/src/main/native/external/libffi
+[submodule "wayland/src/main/native/external/libffi"]
+	path = wayland/src/main/native/external/libffi
 	url = https://android.googlesource.com/platform/external/libffi.git
+[submodule "wayland/src/main/native/external/wayland"]
+	path = wayland/src/main/native/external/wayland
+	url = https://github.com/jekstrand/wayland.git
