@@ -29,19 +29,40 @@ public class Resource
     long resource_ptr;
     private Object data;
 
+    private native long createNative(Client client, Interface iface,
+            int version, int id); 
+
     protected
-    Resource(Client client, Interface iface, int id, Object data)
+    Resource(Client client, Interface iface, int version, int id)
     {
+        resource_ptr = createNative(client, iface, version, id);
+        this.data = null;
+    }
+
+    protected
+    Resource(Client client, Interface iface, int version)
+    {
+        this(client, iface, version, 0);
+    }
+
+    public void
+    setImplementation(Object data)
+    {
+        if (this.data != null)
+            throw new IllegalStateException("implementation already set");
+
         this.data = data;
-        this.resource_ptr = client.addResourceNative(this, iface, id);
     }
 
-    protected
-    Resource(Client client, Interface iface, Object data)
+    public Object
+    getImplementation()
     {
-        this(client, iface, 0, data);
+        return data;
     }
 
+    /**
+     * @deprecated
+     */
     public Object
     getData()
     {

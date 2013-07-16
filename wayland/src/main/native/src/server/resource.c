@@ -75,6 +75,62 @@ wl_jni_resource_to_java(JNIEnv * env, struct wl_resource * resource)
     return (*env)->NewLocalRef(env, resource->data);
 }
 
+static void
+resource_destroyed(struct wl_resource * resource)
+{
+    JNIEnv * env;
+
+    if (resource == NULL)
+        return;
+
+    env = wl_jni_get_env();
+    (*env)->DeleteGlobalRef(env, resource->data);
+    free(resource);
+}
+
+JNIEXPORT jlong JNICALL
+Java_org_freedesktop_wayland_server_Resource_createNative(JNIEnv * env,
+        jobject jresource, jobject jclient, jobject jiface, jint version,
+        jint id)
+{
+    struct wl_client * client;
+    struct wl_resource * resource;
+    struct wl_jni_interface *jni_interface;
+
+    client = wl_jni_client_from_java(env, jclient);
+    if (client == NULL) {
+        wl_jni_throw_NullPointerException(env,
+                "Client not allowed to be null");
+    }
+
+    jni_interface = wl_jni_interface_from_java(env, jiface);
+    if ((*env)->ExceptionCheck(env) == JNI_TRUE)
+        return 0; /* Exception Thrown */
+    if (jni_interface == NULL) {
+        wl_jni_throw_NullPointerException(env,
+                "Interface not allowed to be null");
+        return 0;
+    }
+
+    jresource = (*env)->NewGlobalRef(env, jresource);
+    if (jresource == NULL) {
+        wl_jni_throw_OutOfMemoryError(env, NULL);
+        return 0;
+    }
+
+    resource = wl_resource_create(client, &jni_interface->interface,
+            version, id);
+    if (resource == NULL) {
+        (*env)->DeleteGlobalRef(env, jresource);
+        wl_jni_throw_from_errno(env, errno);
+        return 0;
+    }
+    wl_resource_set_dispatcher(resource, wl_jni_resource_dispatcher,
+            jni_interface->requests, jresource, resource_destroyed);
+
+    return (jlong)(intptr_t)resource;
+}
+
 JNIEXPORT jobject JNICALL
 Java_org_freedesktop_wayland_server_Resource_getClient(JNIEnv * env,
         jobject jresource)
@@ -172,7 +228,7 @@ Java_org_freedesktop_wayland_server_Resource_postEvent(JNIEnv * env,
     if ((*env)->ExceptionCheck(env))
         return;
 
-    wl_resource_post_event_a(resource, opcode, args);
+    wl_resource_post_event_array(resource, opcode, args);
 
     wl_jni_arguments_from_java_destroy(args, signature, nargs);
     free(args);
