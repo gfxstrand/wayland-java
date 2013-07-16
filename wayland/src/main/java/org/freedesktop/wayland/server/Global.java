@@ -24,31 +24,38 @@ package org.freedesktop.wayland.server;
 import org.freedesktop.wayland.arch.Native;
 import org.freedesktop.wayland.Interface;
 
-public class Global extends NativeObjectWrapper
+public class Global
 {
     public static interface BindHandler
     {
         public abstract void bindClient(Client client, int version, int id);
     }
 
-    private Interface iface;
+    private long global_ptr;
     private BindHandler handler;
 
-    public Global(Interface iface, BindHandler handler)
-    {
-        if (iface == null)
-            throw new NullPointerException("Interface cannot be null");
-        if (handler == null)
-            throw new NullPointerException("BindHandler cannot be null");
+    private native long createNative(Display display, Interface iface,
+            int version);
 
-        this.iface = iface;
-        this.handler = handler;
+    protected Global(Display display, Interface iface, int version)
+    {
+        if (display == null)
+            throw new NullPointerException("display not allowed to be null");
+        if (iface == null)
+            throw new NullPointerException("iface not allowed to be null");
+        this.global_ptr = createNative(display, iface, version);
+
+        this.handler = null;
     }
 
-    protected Global(Interface iface)
+    public Global(Display display, Interface iface, int version,
+            BindHandler handler)
     {
-        this.iface = iface;
-        this.handler = null;
+        this(display, iface, version);
+
+        if (handler == null)
+            throw new NullPointerException("BindHandler cannot be null");
+        this.handler = handler;
     }
 
     public void bindClient(Client client, int version, int id)
@@ -58,6 +65,8 @@ public class Global extends NativeObjectWrapper
 
         handler.bindClient(client, version, id);
     }
+
+    public native void destroy();
 
     private static native void initializeJNI();
 

@@ -26,14 +26,18 @@
 
 struct {
     jclass class;
-    jfieldID iface;
+    jfieldID global_ptr;
     jmethodID bindClient;
 } Global;
 
 struct wl_global *
 wl_jni_global_from_java(JNIEnv * env, jobject jglobal)
 {
-    return (struct wl_global *)wl_jni_object_wrapper_get_data(env, jglobal);
+    if (jglobal == NULL)
+        return NULL;
+
+    return (struct wl_global *)(intptr_t)
+            (*env)->GetLongField(env, jglobal, Global.global_ptr);
 }
 
 // FIXME: This isn't exception-safe!!!
@@ -66,55 +70,41 @@ exception:
         (*env)->ExceptionDescribe(env);
 }
 
-void
-wl_jni_global_add_to_display(JNIEnv *env, jobject jglobal,
-        struct wl_display *display)
+JNIEXPORT jlong JNICALL
+Java_org_freedesktop_wayland_server_Global_createNative(JNIEnv * env,
+        jobject jglobal, jobject jdisplay, jobject jinterface, jint version)
 {
-    struct wl_jni_object_wrapper *wrapper;
+    struct wl_display *display;
     struct wl_jni_interface * jni_interface;
     struct wl_global * global;
-    jobject jinterface, self_ref;
 
-    jinterface = (*env)->GetObjectField(env, jglobal, Global.iface);
+    display = wl_jni_display_from_java(env, jdisplay);
     if ((*env)->ExceptionCheck(env))
-        return; /* Exception Thrown */
-
+        return 0;
     jni_interface = wl_jni_interface_from_java(env, jinterface);
     if ((*env)->ExceptionCheck(env))
-        return; /* Exception Thrown */
+        return 0;
 
-    self_ref = (*env)->NewGlobalRef(env, jglobal);
-    if ((*env)->ExceptionCheck(env))
-        return; /* Exception Thrown */
-
-    global = wl_display_add_global(display, &jni_interface->interface,
-            self_ref, &wl_jni_global_bind_func);
-
-    wl_jni_object_wrapper_set_data(env, jglobal, global);
-    if ((*env)->ExceptionCheck(env)) {
-        wl_display_remove_global(display, global);
-        return; /* Exception Thrown */
+    jglobal = (*env)->NewGlobalRef(env, jglobal);
+    if (jglobal == NULL) {
+        wl_jni_throw_OutOfMemoryError(env, NULL);
+        return 0;
     }
 
-    /* The wrapper may not be available until after we set the data */
-    wrapper = wl_jni_object_wrapper_from_java(env, jglobal);
-    if (wrapper == NULL) {
-        wl_display_remove_global(display, global);
-        return; /* Exception Thrown */
+    global = wl_global_create(display, &jni_interface->interface,
+            version, jglobal, &wl_jni_global_bind_func);
+
+    if (global == NULL) {
+        (*env)->DeleteGlobalRef(env, jglobal);
+        wl_jni_throw_OutOfMemoryError(env, NULL);
+        return 0;
     }
 
-    wl_jni_object_wrapper_owned(env, jglobal, self_ref, JNI_TRUE);
-    if ((*env)->ExceptionCheck(env)) {
-        wl_display_remove_global(display, global);
-        return; /* Exception Thrown */
-    }
-
-    wl_display_add_destroy_listener(display, &wrapper->destroy_listener);
+    return (jlong)(intptr_t)global;
 }
 
-void
-wl_jni_global_remove_from_display(JNIEnv *env, jobject jglobal,
-        struct wl_display *display)
+JNIEXPORT void JNICALL
+Java_org_freedesktop_wayland_server_Global_destroy(JNIEnv * env, jclass jglobal)
 {
     struct wl_global *global;
 
@@ -122,8 +112,9 @@ wl_jni_global_remove_from_display(JNIEnv *env, jobject jglobal,
     if ((*env)->ExceptionCheck(env))
         return /* Exception Thrown */
 
-    wl_display_remove_global(display, global);
-    wl_jni_object_wrapper_disowned(env, jglobal, JNI_TRUE);
+    (*env)->DeleteGlobalRef(env, wl_global_get_user_data(global));
+    wl_global_destroy(global);
+    (*env)->SetLongField(env, jglobal, Global.global_ptr, 0);
 }
 
 JNIEXPORT void JNICALL
@@ -136,9 +127,9 @@ Java_org_freedesktop_wayland_server_Global_initializeJNI(JNIEnv * env,
         return;
     }
 
-    Global.iface = (*env)->GetFieldID(env, Global.class,
-            "iface", "Lorg/freedesktop/wayland/Interface;");
-    if (Global.iface == NULL)
+    Global.global_ptr = (*env)->GetFieldID(env, Global.class,
+            "global_ptr", "J");
+    if (Global.global_ptr == NULL)
         return; /* Exception Thrown */
 
     Global.bindClient = (*env)->GetMethodID(env, Global.class, "bindClient",
