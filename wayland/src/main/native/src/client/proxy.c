@@ -95,7 +95,7 @@ Java_org_freedesktop_wayland_client_Proxy_createNative(JNIEnv * env,
         (*env)->DeleteGlobalRef(env, self_ref);
         wl_proxy_destroy(proxy);
     }
-    wl_proxy_add_dispatched_listener(proxy, wl_jni_proxy_dispatcher,
+    wl_proxy_add_dispatcher(proxy, wl_jni_proxy_dispatcher,
             interface->events, self_ref);
 }
 
@@ -149,7 +149,7 @@ Java_org_freedesktop_wayland_client_Proxy_marshal(JNIEnv * env, jobject jproxy,
     if ((*env)->ExceptionCheck(env))
         return;
 
-    wl_proxy_marshal_a(proxy, opcode, args);
+    wl_proxy_marshal_array(proxy, opcode, args);
 
     wl_jni_arguments_from_java_destroy(args, signature, nargs);
     free(args);
