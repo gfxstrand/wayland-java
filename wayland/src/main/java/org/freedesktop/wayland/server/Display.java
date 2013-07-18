@@ -40,15 +40,6 @@ public class Display
     public native void terminate();
     public native void run();
     public native void flushClients();
-    public native void addGlobal(Global global);
-    public native void removeGlobal(Global global);
-
-    public Global addGlobal(Interface iface, Global.BindHandler bindHandler)
-    {
-        Global global = new Global(iface, bindHandler);
-        addGlobal(global);
-        return global;
-    }
 
     public native int getSerial();
     public native int nextSerial();

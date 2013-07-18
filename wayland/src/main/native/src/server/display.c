@@ -125,37 +125,6 @@ Java_org_freedesktop_wayland_server_Display_flushClients(JNIEnv * env,
     wl_display_flush_clients(wl_jni_display_from_java(env, jdisplay));
 }
 
-JNIEXPORT void JNICALL
-Java_org_freedesktop_wayland_server_Display_addGlobal(JNIEnv * env,
-        jobject jdisplay, jobject jglobal)
-{
-    struct wl_display * display;
-
-    display = wl_jni_display_from_java(env, jdisplay);
-    if ((*env)->ExceptionCheck(env))
-        return; /* Exception Thrown */
-
-    wl_jni_global_add_to_display(env, jglobal, display);
-}
-
-JNIEXPORT void JNICALL
-Java_org_freedesktop_wayland_server_Display_removeGlobal(JNIEnv * env,
-        jobject jdisplay, jobject jglobal)
-{
-    struct wl_display * display;
-
-    display = wl_jni_display_from_java(env, jdisplay);
-    if ((*env)->ExceptionCheck(env))
-        return; /* Exception Thrown */
-
-    if ((*env)->IsSameObject(env, jglobal, NULL)) {
-        wl_jni_throw_NullPointerException(env, NULL);
-        return; /* Exception Thrown */
-    }
-
-    wl_jni_global_remove_from_display(env, jglobal, display);
-}
-
 JNIEXPORT jint JNICALL
 Java_org_freedesktop_wayland_server_Display_getSerial(JNIEnv * env,
         jobject jdisplay)

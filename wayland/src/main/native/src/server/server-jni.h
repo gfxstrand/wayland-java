@@ -56,10 +56,6 @@ struct wl_display * wl_jni_display_from_java(JNIEnv * env, jobject display);
 jobject wl_jni_display_to_java(JNIEnv * env, struct wl_display * display);
 
 struct wl_global * wl_jni_global_from_java(JNIEnv * env, jobject jglobal);
-void wl_jni_global_add_to_display(JNIEnv *env, jobject jglobal,
-        struct wl_display *display);
-void wl_jni_global_remove_from_display(JNIEnv *env, jobject jglobal,
-        struct wl_display *display);
 
 struct wl_event_loop * wl_jni_event_loop_from_java(JNIEnv * env, jobject event_loop);
 jobject wl_jni_event_loop_to_java(JNIEnv * env, struct wl_event_loop * event_loop);
