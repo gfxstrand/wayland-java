@@ -17,7 +17,7 @@ working.
 Building wayland-java locally isn't too difficult assuming you have a
 version of the wayland library with language bindings support.
 
-1. Clone the dispatchers-internal branch of git://github.com/jekstrand/wayland.git
+1. Clone the dispatchers-1.2 branch of git://github.com/jekstrand/wayland.git
 2. Build and install libwayland
 3. Clone git://github.com/jekstrand/wayland-java.git
 4. Run `git submodule init` and `git submodule update` (this is mainly to pull
