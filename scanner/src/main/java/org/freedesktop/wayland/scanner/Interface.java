@@ -177,13 +177,13 @@ class Interface
         writer.write("\t{\n");
 
         writer.write("\t\tpublic Resource(");
-        writer.write("Client client, Object data, int version, int id)\n");
+        writer.write("Client client, int version, int id)\n");
         writer.write("\t\t{\n");
         writer.write("\t\t\tsuper(client, WAYLAND_INTERFACE, version, id);\n");
         writer.write("\t\t}\n");
 
         writer.write("\t\tpublic Resource(");
-        writer.write("Client client, Object data, int version)\n");
+        writer.write("Client client, int version)\n");
         writer.write("\t\t{\n");
         writer.write("\t\t\tsuper(client, WAYLAND_INTERFACE, version);\n");
         writer.write("\t\t}\n");
