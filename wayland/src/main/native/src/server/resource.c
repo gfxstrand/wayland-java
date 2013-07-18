@@ -85,7 +85,6 @@ resource_destroyed(struct wl_resource * resource)
 
     env = wl_jni_get_env();
     (*env)->DeleteGlobalRef(env, resource->data);
-    free(resource);
 }
 
 JNIEXPORT jlong JNICALL
