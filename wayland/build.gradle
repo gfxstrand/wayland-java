@@ -1,0 +1,36 @@
+apply plugin: 'java'
+apply plugin: 'maven'
+
+description = 'Java bindings for the Wayland client and server protocol.'
+
+task protocol(dependsOn: project(':scanner').classes) {
+    ant.taskdef(
+        name: 'scanner',
+        classpath: project(':scanner').sourceSets.main.output.classesDir,
+        classname: 'org.freedesktop.wayland.scanner.Scanner'
+    )
+
+    def pkgconfig = 'pkg-config --variable=pkgdatadir wayland-client'.execute()
+    pkgconfig.waitFor()
+    def waylandDataDir = pkgconfig.in.text.trim()
+
+    ant.scanner(
+        src: "${waylandDataDir}/wayland.xml",
+        dest: 'src/main/java',
+        component: 'server',
+        javapackage: 'org.freedesktop.wayland.protocol'
+    )
+}
+
+task jni(type: Exec) {
+    workingDir = 'src/main/native'
+    commandLine 'make'
+}
+
+compileJava.dependsOn protocol
+jar.dependsOn jni
+
+dependencies {
+    testCompile group: 'junit', name: 'junit', version: '4.+'
+}
+

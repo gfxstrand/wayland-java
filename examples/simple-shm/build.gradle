@@ -1,0 +1,6 @@
+archivesBaseName = 'wayland.examples.simpleshm'
+
+dependencies {
+    compile project(':wayland')
+}
+

@@ -1,0 +1,10 @@
+apply plugin: 'java'
+apply plugin: 'maven'
+
+description = 'Ant task for auto-generating Wayland protocol Java classes'
+archivesBaseName = 'wayland.scanner'
+
+dependencies {
+    compile group: 'ant', name: 'ant', version: '1.7.0'
+}
+

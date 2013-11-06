@@ -9,6 +9,8 @@ scanner/classes
 scanner/WaylandProtocolScanner.jar
 test/classes
 
+/.gradle
+/.classpath
 /.settings
 /.project
 /target
