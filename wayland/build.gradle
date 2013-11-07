@@ -17,7 +17,6 @@ task protocol(dependsOn: project(':scanner').classes) << {
     ant.scanner(
         src: "${waylandDataDir}/wayland.xml",
         dest: 'src/main/java',
-        component: 'server',
         javapackage: 'org.freedesktop.wayland.protocol'
     )
 }

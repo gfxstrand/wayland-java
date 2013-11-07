@@ -79,7 +79,7 @@ public class Protocol
         writer.write(" */\n");
     }
 
-    public void writeServerJava(File dest)
+    public void writeJava(File dest)
     {
         if (scanner.getJavaPackage() != null) {
             String pkg = scanner.getJavaPackage();
@@ -98,7 +98,7 @@ public class Protocol
                 scanner.log("Generating " + destFile);
                 Writer writer = new FileWriter(destFile);
                 writeCopyright(writer);
-                iFace.writeServerJava(writer);
+                iFace.writeJava(writer);
                 writer.close();
             } catch (IOException e) {
                 throw new BuildException(e.getMessage());

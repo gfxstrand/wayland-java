@@ -52,16 +52,6 @@ public class Scanner extends Task
         this.dest = dest;
     }
 
-    public enum Component {
-        server,
-        client
-    }
-    private Component component;
-    public void setComponent(Component comp)
-    {
-        this.component = comp;
-    }
-
     private String javaPackage;
     public void setJavapackage(String javaPackage)
     {
@@ -133,10 +123,7 @@ public class Scanner extends Task
 
         Protocol protocol = new Protocol(this, xmlElem);
 
-        if (component == Component.server) {
-            protocol.writeServerJava(dest);
-        } else if (component == Component.client) {
-        }
+        protocol.writeJava(dest);
     }
 }
 

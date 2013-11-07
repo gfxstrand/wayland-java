@@ -84,7 +84,7 @@ class Interface
         }
     }
 
-    public void writeServerJava(Writer writer) throws IOException
+    public void writeJava(Writer writer) throws IOException
     {
         if (scanner.getJavaPackage() != null)
             writer.write("package " + scanner.getJavaPackage() + ";\n\n");
