@@ -3,7 +3,7 @@ apply plugin: 'maven'
 
 description = 'Java bindings for the Wayland client and server protocol.'
 
-task protocol(dependsOn: project(':scanner').classes) {
+task protocol(dependsOn: project(':scanner').classes) << {
     ant.taskdef(
         name: 'scanner',
         classpath: project(':scanner').sourceSets.main.output.classesDir,
