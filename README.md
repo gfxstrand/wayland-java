@@ -14,15 +14,11 @@ working.
 
 ## Building wayland-java locally
 
-Building wayland-java locally isn't too difficult assuming you have a
-version of the wayland library with language bindings support.
+Building wayland-java locally is simple
 
-1. Clone the dispatchers-1.2 branch of git://github.com/jekstrand/wayland.git
-2. Build and install libwayland
-3. Clone git://github.com/jekstrand/wayland-java.git
-4. Run `git submodule init` and `git submodule update` (this is mainly to pull
-   wayland.xml into the subtree because it is not yet distributed.)
-5. Run maven
+1. Make sure you have libwayland 1.3 or later installed
+2. Clone git://github.com/jekstrand/wayland-java.git
+3. Run `gradle install`
 
 ## Building wayland-java for Android
 
