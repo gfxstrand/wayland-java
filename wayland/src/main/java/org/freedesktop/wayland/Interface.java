@@ -46,14 +46,15 @@ public class Interface
     private String name;
     private int version;
     private Message[] requests;
-    private Class<?> requestsIface;
+    private Class<?>[] requestsIfaces;
     private Message[] events;
-    private Class<?> eventsIface;
+    private Class<?>[] eventsIfaces;
     private Class<?> proxyClass;
     private Class<?> resourceClass;
 
-    public Interface(String name, int version, Message[] requests,
-            Class<?> requestsIface, Message[] events, Class<?> eventsIface,
+    public Interface(String name, int version,
+            Message[] requests, Class<?>[] requestsIfaces,
+            Message[] events, Class<?>[] eventsIfaces,
             Class<?> proxyClass, Class<?> resourceClass)
     {
         this.interface_ptr = 0;
@@ -61,9 +62,9 @@ public class Interface
         this.name = name;
         this.version = version;
         this.requests = requests;
-        this.requestsIface = requestsIface;
+        this.requestsIfaces = requestsIfaces;
         this.events = events;
-        this.eventsIface = eventsIface;
+        this.eventsIfaces = eventsIfaces;
         this.proxyClass = proxyClass;
         this.resourceClass = resourceClass;
     }
@@ -73,16 +74,6 @@ public class Interface
     public String getName()
     {
         return name;
-    }
-
-    public Class<?> getRequestsInterface()
-    {
-        return requestsIface;
-    }
-
-    public Class<?> getEventsInterface()
-    {
-        return eventsIface;
     }
 
     public Class<?> getProxyClass()

@@ -21,6 +21,8 @@
  */
 package org.freedesktop.wayland.scanner;
 
+import java.util.List;
+import java.util.Iterator;
 import java.util.ArrayList;
 
 import java.io.Writer;
@@ -31,11 +33,10 @@ import org.w3c.dom.Element;
 
 class Interface
 {
-    public Protocol protocol;
-    public Scanner scanner;
-    public String name;
-    public String wl_name;
-    private int version;
+    public final Scanner scanner;
+    public final String name;
+    public final String wl_name;
+    private final int version;
     private Description description;
     private ArrayList<Enum> enums;
     private ArrayList<Message> requests;
@@ -84,6 +85,66 @@ class Interface
         }
     }
 
+    private String versionedIfaceName(String ifaceBaseName, int version)
+    {
+        if (version == 1)
+            return ifaceBaseName;
+        else
+            return ifaceBaseName + version;
+    }
+
+    private void writeInterfaceClassList(Writer writer,
+            List<Message> messages, String ifaceBaseName) throws IOException
+    {
+        Iterator<Message> iter = messages.iterator();
+        Message msg = iter.hasNext() ? iter.next() : null;
+
+        int lastVersion = 1;
+        for (int i = 1; i <= version; ++i) {
+            if (msg != null && msg.since <= i) {
+                lastVersion = msg.since;
+
+                while (msg != null && msg.since <= i)
+                    msg = iter.hasNext() ? iter.next() : null;
+            }
+
+            writer.write("\t\t\t");
+            writer.write(versionedIfaceName(ifaceBaseName, lastVersion));
+            writer.write(".class, \n");
+        }
+    }
+
+    private void writeVersionedInterfaces(Writer writer,
+            List<Message> messages, String ifaceBaseName) throws IOException
+    {
+        int version = 1;
+        writer.write("\n");
+        writer.write("\tpublic interface ");
+        writer.write(versionedIfaceName(ifaceBaseName, 1));
+        writer.write("\n\t{");
+        for (Message msg : messages) {
+            if (msg.since < version)
+                throw new RuntimeException(ifaceBaseName +
+                        " version order mismatch for "
+                        + toClassName(name) + "." + msg.name);
+
+            if (msg.since > version) {
+                writer.write("\t}\n\n");
+                writer.write("\tpublic interface ");
+                writer.write(versionedIfaceName(ifaceBaseName, msg.since));
+                writer.write(" extends ");
+                writer.write(versionedIfaceName(ifaceBaseName, version));
+                writer.write("\n\t{");
+
+                version = msg.since;
+            }
+
+            writer.write("\n");
+            msg.writeInterfaceMethod(writer);
+        }
+        writer.write("\t}\n");
+    }
+
     public void writeJava(Writer writer) throws IOException
     {
         if (scanner.getJavaPackage() != null)
@@ -110,12 +171,19 @@ class Interface
         for (Message request : requests) {
             request.writeMessageInfo(writer);
         }
-        writer.write("\t\t}, Requests.class, \n");
+        writer.write("\t\t},\n");
+        writer.write("\t\tnew Class<?>[]{\n");
+        writeInterfaceClassList(writer, requests, "Requests");
+        writer.write("\t\t},\n");
+
         writer.write("\t\tnew Interface.Message[]{\n");
         for (Message event : events) {
             event.writeMessageInfo(writer);
         }
-        writer.write("\t\t}, Events.class, \n");
+        writer.write("\t\t},\n");
+        writer.write("\t\tnew Class<?>[]{\n");
+        writeInterfaceClassList(writer, events, "Events");
+        writer.write("\t\t},\n");
         writer.write("\t\tProxy.class,\n");
         writer.write("\t\tResource.class\n");
         writer.write("\t);\n");
@@ -125,23 +193,9 @@ class Interface
             enm.writeJavaDeclaration(writer);
         }
 
-        writer.write("\n");
-        writer.write("\tpublic interface Requests\n");
-        writer.write("\t{");
-        for (Message request : requests) {
-            writer.write("\n");
-            request.writeInterfaceMethod(writer);
-        }
-        writer.write("\t}\n");
+        writeVersionedInterfaces(writer, requests, "Requests");
 
-        writer.write("\n");
-        writer.write("\tpublic interface Events\n");
-        writer.write("\t{");
-        for (Message event : events) {
-            writer.write("\n");
-            event.writeInterfaceMethod(writer);
-        }
-        writer.write("\t}\n");
+        writeVersionedInterfaces(writer, events, "Events");
 
         writer.write("\n");
         writer.write("\tpublic static class Proxy");

@@ -33,9 +33,9 @@ static struct {
     jfieldID name;
     jfieldID version;
     jfieldID requests;
-    jfieldID requestsIface;
+    jfieldID requestsIfaces;
     jfieldID events;
-    jfieldID eventsIface;
+    jfieldID eventsIfaces;
     jfieldID proxyClass;
     jfieldID resourceClass;
 
@@ -58,32 +58,28 @@ struct {
     } lang;
 } java;
 
-enum interface_flags {
-    INTERFACE_REQUEST = 0,
-    INTERFACE_EVENT = 1,
+enum interface_type {
+    INTERFACE_REQUESTS = 0,
+    INTERFACE_EVENTS = 1,
     INTERFACE_PROXY = 2,
     INTERFACE_RESOURCE = 3
 };
 
 char *
-get_interface_java_name(JNIEnv *env, jobject jinterface, uint32_t iface)
+get_proxy_java_name(JNIEnv *env, jobject jinterface, enum interface_type iface)
 {
     jclass cls;
     jstring jname;
     char *name, *p;
 
     switch (iface) {
-    case INTERFACE_EVENT:
-        cls = (*env)->GetObjectField(env, jinterface, Interface.eventsIface);
-        break;
-    case INTERFACE_REQUEST:
-        cls = (*env)->GetObjectField(env, jinterface, Interface.requestsIface);
-        break;
     case INTERFACE_PROXY:
         cls = (*env)->GetObjectField(env, jinterface, Interface.proxyClass);
         break;
     case INTERFACE_RESOURCE:
         cls = (*env)->GetObjectField(env, jinterface, Interface.resourceClass);
+        break;
+    default:
         break;
     }
 
@@ -177,38 +173,41 @@ destroy_native_message(const struct wl_message * msg)
 
 static jmethodID
 get_java_method(JNIEnv * env, jobject jinterface, struct wl_message *message,
-        uint32_t flags)
+        enum interface_type iface)
 {
     const char *signature, *proxyName;
     char jsignature[MAX_JSIG_LEN];
     jclass cls;
+    jarray classList;
 
-    if (flags & INTERFACE_EVENT) {
-        cls = (*env)->GetObjectField(env, jinterface, Interface.eventsIface);
-    } else {
-        cls = (*env)->GetObjectField(env, jinterface, Interface.requestsIface);
+    if (iface == INTERFACE_EVENTS) {
+        classList = (*env)->GetObjectField(env,
+                jinterface, Interface.eventsIfaces);
+    } else if (iface == INTERFACE_REQUESTS) {
+        classList = (*env)->GetObjectField(env,
+                jinterface, Interface.requestsIfaces);
     }
+    if ((*env)->ExceptionCheck(env))
+        return NULL;
+    cls = (*env)->GetObjectArrayElement(env, classList,
+            (*env)->GetArrayLength(env, classList) - 1);
     if ((*env)->ExceptionCheck(env))
         return NULL;
 
     jsignature[0] = '(';
     jsignature[1] = '\0';
 
-    if (flags & INTERFACE_EVENT) {
-        strncat(jsignature, "L", MAX_JSIG_LEN);
-        proxyName = get_interface_java_name(env, jinterface, INTERFACE_PROXY);
-        if (proxyName == NULL)
-            return NULL;
-        strncat(jsignature, proxyName, MAX_JSIG_LEN);
-        strncat(jsignature, ";", MAX_JSIG_LEN);
-    } else {
-        strncat(jsignature, "L", MAX_JSIG_LEN);
-        proxyName = get_interface_java_name(env, jinterface, INTERFACE_RESOURCE);
-        if (proxyName == NULL)
-            return NULL;
-        strncat(jsignature, proxyName, MAX_JSIG_LEN);
-        strncat(jsignature, ";", MAX_JSIG_LEN);
+    if (iface == INTERFACE_EVENTS) {
+        proxyName = get_proxy_java_name(env, jinterface, INTERFACE_PROXY);
+    } else if (iface == INTERFACE_REQUESTS) {
+        proxyName = get_proxy_java_name(env, jinterface, INTERFACE_RESOURCE);
     }
+    if (proxyName == NULL)
+        return NULL;
+
+    strncat(jsignature, "L", MAX_JSIG_LEN);
+    strncat(jsignature, proxyName, MAX_JSIG_LEN);
+    strncat(jsignature, ";", MAX_JSIG_LEN);
 
     for (signature = message->signature; *signature; ++signature) {
         switch (*signature) {
@@ -227,18 +226,18 @@ get_java_method(JNIEnv * env, jobject jinterface, struct wl_message *message,
             strncat(jsignature, "Ljava/lang/String;", MAX_JSIG_LEN);
             break;
         case 'o':
-            if (flags & INTERFACE_EVENT)
+            if (iface == INTERFACE_EVENTS)
                 strncat(jsignature, "Lorg/freedesktop/wayland/client/Proxy;",
                         MAX_JSIG_LEN);
-            else
+            else if (iface == INTERFACE_REQUESTS)
                 strncat(jsignature, "Lorg/freedesktop/wayland/server/Resource;",
                         MAX_JSIG_LEN);
             break;
         case 'n':
-            if (flags & INTERFACE_EVENT)
+            if (iface == INTERFACE_EVENTS)
                 strncat(jsignature, "Lorg/freedesktop/wayland/client/Proxy;",
                         MAX_JSIG_LEN);
-            else
+            else if (iface == INTERFACE_REQUESTS)
                 strncat(jsignature, "I", MAX_JSIG_LEN);
             break;
         case 'h':
@@ -328,7 +327,7 @@ create_native_interface(JNIEnv *env, jobject jinterface)
         }
 
         jni_interface->requests[method] = get_java_method(env, jinterface,
-                methods + method, INTERFACE_REQUEST);
+                methods + method, INTERFACE_REQUESTS);
         (*env)->DeleteLocalRef(env, jobj);
         if ((*env)->ExceptionCheck(env))
             goto delete_methods;
@@ -369,7 +368,7 @@ create_native_interface(JNIEnv *env, jobject jinterface)
         if ((*env)->ExceptionCheck(env)) goto delete_events;
 
         jni_interface->events[event] = get_java_method(env, jinterface,
-                events + event, INTERFACE_EVENT);
+                events + event, INTERFACE_EVENTS);
         if ((*env)->ExceptionCheck(env))
             goto delete_events;
     }
@@ -487,17 +486,17 @@ Java_org_freedesktop_wayland_Interface_initializeJNI(JNIEnv * env,
             "requests", "[Lorg/freedesktop/wayland/Interface$Message;");
     if (Interface.requests == NULL) return; /* Exception Thrown */
 
-    Interface.requestsIface = (*env)->GetFieldID(env, Interface.class,
-            "requestsIface", "Ljava/lang/Class;");
-    if (Interface.requestsIface == NULL) return; /* Exception Thrown */
+    Interface.requestsIfaces = (*env)->GetFieldID(env, Interface.class,
+            "requestsIfaces", "[Ljava/lang/Class;");
+    if (Interface.requestsIfaces == NULL) return; /* Exception Thrown */
 
     Interface.events = (*env)->GetFieldID(env, Interface.class,
             "events", "[Lorg/freedesktop/wayland/Interface$Message;");
     if (Interface.events == NULL) return; /* Exception Thrown */
 
-    Interface.eventsIface = (*env)->GetFieldID(env, Interface.class,
-            "eventsIface", "Ljava/lang/Class;");
-    if (Interface.eventsIface == NULL) return; /* Exception Thrown */
+    Interface.eventsIfaces = (*env)->GetFieldID(env, Interface.class,
+            "eventsIfaces", "[Ljava/lang/Class;");
+    if (Interface.eventsIfaces == NULL) return; /* Exception Thrown */
 
     Interface.proxyClass = (*env)->GetFieldID(env, Interface.class,
             "proxyClass", "Ljava/lang/Class;");

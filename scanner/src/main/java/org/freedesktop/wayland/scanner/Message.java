@@ -33,7 +33,8 @@ abstract class Message
 {
     protected Interface iface;
     protected int id;
-    protected String name;
+    public final String name;
+    public final int since;
     protected Description description;
     protected ArrayList<Argument> args;
 
@@ -44,6 +45,12 @@ abstract class Message
         args = new ArrayList<Argument>();
 
         name = xmlElem.getAttribute("name");
+
+        String sinceVal = xmlElem.getAttribute("since");
+        if (sinceVal == null || sinceVal.isEmpty())
+            since = 1;
+        else
+            since = Integer.parseInt(sinceVal);
 
         for (Node node = xmlElem.getFirstChild(); node != null;
                 node = node.getNextSibling()) {
