@@ -244,8 +244,7 @@ get_java_method(JNIEnv * env, jobject jinterface, struct wl_message *message,
             strncat(jsignature, "I", MAX_JSIG_LEN);
             break;
         default:
-            wl_jni_throw_IllegalArgumentException(env, "Invalid signature");
-            return NULL;
+            break;
         }
     }
     strncat(jsignature, ")V", MAX_JSIG_LEN);

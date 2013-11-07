@@ -72,6 +72,8 @@ abstract class Message
         writer.write("\t\t\tnew Interface.Message(\"");
         writer.write(StringUtil.toLowerCamelCase(name) + "\", ");
         writer.write("\"");
+        if (since != 1)
+            writer.write(String.valueOf(since));
         for (Argument arg : args) {
             if (arg.type == Argument.Type.NEW_ID && arg.ifaceName == null)
                 writer.write("su");

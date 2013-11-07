@@ -203,16 +203,35 @@ Java_org_freedesktop_wayland_server_Resource_postEvent(JNIEnv * env,
     struct wl_resource *resource;
     union wl_argument *args;
     const char *signature;
-    int nargs;
+    int nargs, since;
 
     resource = wl_jni_resource_from_java(env, jresource);
 
     signature = resource->object.interface->events[opcode].signature;
+
+	since = atoi(signature);
+    if (since == 0)
+        since = 1;
+
+    if (since > wl_resource_get_version(resource)) {
+        wl_jni_throw_by_name(env,
+                "java.lang.UnsupportedOperationException",
+                "Event version higher than bound resource version.");
+    }
+
     nargs = 0;
-    while (*signature) {
-        if (*signature != '?')
-            nargs++;
-        signature++;
+	for(; *signature; ++signature) {
+		switch(*signature) {
+		case 'i':
+		case 'u':
+		case 'f':
+		case 's':
+		case 'o':
+		case 'n':
+		case 'a':
+		case 'h':
+			++nargs;
+		}
     }
 
     args = malloc(nargs * sizeof(union wl_argument));
