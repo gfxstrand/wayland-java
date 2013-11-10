@@ -84,9 +84,8 @@ public class Protocol
 
     public void writeJava(File dest)
     {
-        if (scanner.getJavaPackage() != null) {
-            String pkg = scanner.getJavaPackage();
-            String[] parts = pkg.split("\\.");
+        if (scanner.javaPackage != null) {
+            String[] parts = scanner.javaPackage.split("\\.");
             for (int i = 0; i < parts.length; ++i) {
                 dest = new File(dest, parts[i]);
                 if (! dest.exists())

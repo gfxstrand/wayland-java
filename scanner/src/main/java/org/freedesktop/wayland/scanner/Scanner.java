@@ -52,17 +52,13 @@ public class Scanner extends Task
         this.dest = dest;
     }
 
-    private String javaPackage;
+    String javaPackage;
     public void setJavapackage(String javaPackage)
     {
-        this.javaPackage = javaPackage;
-    }
-    public String getJavaPackage()
-    {
         if (javaPackage == null || javaPackage.isEmpty())
-            return null;
+            this.javaPackage = null;
         else
-            return javaPackage;
+            this.javaPackage = javaPackage;
     }
 
     @Override

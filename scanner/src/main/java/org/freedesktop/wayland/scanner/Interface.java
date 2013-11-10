@@ -147,8 +147,8 @@ class Interface
 
     public void writeJava(Writer writer) throws IOException
     {
-        if (scanner.getJavaPackage() != null)
-            writer.write("package " + scanner.getJavaPackage() + ";\n\n");
+        if (scanner.javaPackage != null)
+            writer.write("package " + scanner.javaPackage + ";\n\n");
 
         // TODO: Import stuff here
         writer.write("import java.lang.String;\n");
