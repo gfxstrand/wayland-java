@@ -156,6 +156,10 @@ class Interface
         writer.write("import org.freedesktop.wayland.Interface;\n");
         writer.write("import org.freedesktop.wayland.server.Client;\n");
         writer.write("import org.freedesktop.wayland.server.RequestError;\n");
+
+        if (!"org.freedesktop.wayland.protocol".equals(scanner.javaPackage))
+            writer.write("import org.freedesktop.wayland.protocol.*;\n");
+
         writer.write("\n");
 
         for (Dependancy dep : scanner.dependancies)
