@@ -157,6 +157,10 @@ class Interface
         writer.write("import org.freedesktop.wayland.server.Client;\n");
         writer.write("import org.freedesktop.wayland.server.RequestError;\n");
         writer.write("\n");
+
+        for (Dependancy dep : scanner.dependancies)
+            dep.writeImport(writer);
+        writer.write("\n");
         
         if (description != null)
             description.writeJavaDoc(writer, "");

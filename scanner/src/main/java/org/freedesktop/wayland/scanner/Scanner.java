@@ -21,6 +21,7 @@
  */
 package org.freedesktop.wayland.scanner;
 
+import java.util.ArrayList;
 import java.io.File;
 
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -59,6 +60,12 @@ public class Scanner extends Task
             this.javaPackage = null;
         else
             this.javaPackage = javaPackage;
+    }
+
+    final ArrayList<Dependancy> dependancies = new ArrayList<Dependancy>();
+    public void addDependancy(Dependancy dep)
+    {
+        dependancies.add(dep);
     }
 
     @Override
