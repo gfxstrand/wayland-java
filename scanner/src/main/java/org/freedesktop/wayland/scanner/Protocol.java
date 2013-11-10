@@ -66,6 +66,9 @@ public class Protocol
 
     public void writeCopyright(Writer writer) throws IOException
     {
+        if (copyright == null)
+            return;
+
         writer.write("/*\n");
 
         BufferedReader reader = new BufferedReader(
